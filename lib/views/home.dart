@@ -112,6 +112,30 @@ class HomeState extends State<Home> {
                 child: GridView.count(physics: const NeverScrollableScrollPhysics(), crossAxisCount: 2, crossAxisSpacing: 4.0, mainAxisSpacing: 8.0, children: [
                   GestureDetector(
                     onTap: () {
+                      URL.launch('https://www.lpu.edu.ph/');
+                    },
+                    child: Card(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+                      child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(color: AppConfig.appSecondaryTheme, borderRadius: BorderRadius.circular(8.0)),
+                          child: Center(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: <Widget>[
+                              Expanded(child: Image.asset('assets/images/home_contact_information.png', fit: BoxFit.contain)),
+                              const SizedBox(height: 16),
+                              const Text('LPU Official Website',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Color(0xFFFFFFFF),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  )),
+                            ]),
+                          )),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
                       URL.launch('https://lpu.mrooms.net/');
                     },
                     child: Card(
@@ -123,7 +147,7 @@ class HomeState extends State<Home> {
                             child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: <Widget>[
                               Expanded(child: Image.asset('assets/images/home_mylpu_classroom.png', fit: BoxFit.contain)),
                               const SizedBox(height: 16),
-                              const Text('MyLPU Classroom',
+                              const Text('myLPU e-Learning',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: Color(0xFFFFFFFF),
