@@ -29,6 +29,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  syncfusion_flutter_pdfviewer: ^20.4.54
   shared_preferences: ^2.0.7
   http: ^0.13.3
   
@@ -83,6 +84,7 @@ flutter:
   assets:
     - assets/icons/
     - assets/images/
+    - assets/handbook/LPU_M_SHSGuidebook2018.pdf
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.
