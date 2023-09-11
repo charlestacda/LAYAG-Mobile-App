@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:lpu_app/config/app_config.dart';
 import 'package:lpu_app/views/home.dart';
 import 'package:lpu_app/views/calendar.dart';
-import 'package:lpu_app/views/news.dart';
 import 'package:lpu_app/views/todo.dart';
-import 'package:lpu_app/views/handbook_menu.dart';
+import 'package:lpu_app/views/news.dart';
 import 'package:lpu_app/views/notifications.dart';
 import 'package:lpu_app/views/add_article.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
@@ -22,7 +21,7 @@ class BottomNavState extends State<NewNavigation> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: const [Calendar(), ToDo(), Home(), HandbookMenu(), Notifications(), AddArticle()][currentIndex],
+      body: const [Calendar(), ToDo(), Home(),News(), Notifications(), AddArticle()][currentIndex],
       backgroundColor: Colors.white,
       bottomNavigationBar: CurvedNavigationBar(
         index: currentIndex,

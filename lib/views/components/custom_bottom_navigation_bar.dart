@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:lpu_app/config/app_config.dart';
 import 'package:lpu_app/views/home.dart';
 import 'package:lpu_app/views/calendar.dart';
-import 'package:lpu_app/views/news.dart';
 import 'package:lpu_app/views/todo.dart';
+import 'package:lpu_app/views/news.dart';
 import 'package:lpu_app/views/notifications.dart';
 import 'package:lpu_app/views/add_article.dart';
 
