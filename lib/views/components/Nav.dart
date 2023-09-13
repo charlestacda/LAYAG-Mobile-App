@@ -44,7 +44,7 @@ class BottomNavState extends State<NewNavigation> {
             color:Colors.white,
           ),
           Icon(
-            Icons.newspaper_outlined,
+            Icons.book_outlined,
             color: Colors.white,
           ),
           Icon(
