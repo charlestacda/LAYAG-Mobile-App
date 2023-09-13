@@ -59,25 +59,44 @@ class _HandbookMenuState extends State<HandbookMenu> {
           ),
         ],
       ),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () {
-            // Load and cache the PDF when the button is pressed
-            loadAndCachePdf(context).then((_) {
-              // Check if PDF content is cached, and navigate to Handbook if available
-              if (cachedPdfContent != null) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => Handbook(),
+      body: SingleChildScrollView(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 32, 16, 64),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Container(
+                  child: Image.asset(
+                    'assets/images/handbook.png',
+                    width: double.infinity,
                   ),
-                );
-              } else {
-                // Handle the case when the PDF content is not cached
-                // You can show a loading indicator or an error message
-              }
-            });
-          },
-          child: Text('View Student Handbook'),
+                  padding: const EdgeInsets.fromLTRB(0, 0, 0, 15),
+                ),
+                Center( // Center the button
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // Load and cache the PDF when the button is pressed
+                      loadAndCachePdf(context).then((_) {
+                        // Check if PDF content is cached, and navigate to Handbook if available
+                        if (cachedPdfContent != null) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => Handbook(),
+                            ),
+                          );
+                        } else {
+                          // Handle the case when the PDF content is not cached
+                          // You can show a loading indicator or an error message
+                        }
+                      });
+                    },
+                    child: Text('View Student Handbook'),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
