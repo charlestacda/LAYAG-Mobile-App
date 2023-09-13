@@ -9,6 +9,34 @@ import 'package:lpu_app/views/help.dart';
 import 'package:lpu_app/views/payment_procedures.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lpu_app/views/borrow_return.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+class Portal {
+  final int id;
+  final String title;
+  final String link;
+  final String color;
+  final String img;
+
+  Portal({
+    required this.id,
+    required this.title,
+    required this.link,
+    required this.color,
+    required this.img,
+  });
+
+  factory Portal.fromJson(Map<String, dynamic> json) {
+    return Portal(
+      id: json['id'],
+      title: json['title'],
+      link: json['link'],
+      color: json['color'],
+      img: json['img'],
+    );
+  }
+}
 
 
 class Home extends StatefulWidget {
@@ -22,12 +50,14 @@ class HomeState extends State<Home> {
   bool isPopedUp = false;
   Random random = Random();
   int randomNumber = 0;
+  List<Portal> portals = [];
 
   @override
   void initState() {
     super.initState();
     randomNumber = random.nextInt(8);
     checkAndShowDialog();
+    fetchPortals();
   }
 
   void checkAndShowDialog() async {
@@ -66,6 +96,30 @@ class HomeState extends State<Home> {
       prefs.setBool('dialogShown', true);
     }
   }
+
+  Future<void> fetchPortals() async {
+  try {
+    final response = await http.get(
+      Uri.parse('http://charlestacda-layag_cms.mdbgo.io/portals_view.php'),
+    );
+
+    if (response.statusCode == 200) {
+      List<dynamic> portalList = json.decode(response.body);
+
+      List<Portal> fetchedPortals =
+          portalList.map((json) => Portal.fromJson(json)).toList();
+
+      setState(() {
+        portals = fetchedPortals;
+      });
+    } else {
+      print('Failed to load portals: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error fetching portals: $e');
+  }
+}
+
 
 
   @override
@@ -109,123 +163,60 @@ class HomeState extends State<Home> {
                 decoration: const BoxDecoration(
                   color: Colors.white,
                 ),
-                child: GridView.count(physics: const NeverScrollableScrollPhysics(), crossAxisCount: 2, crossAxisSpacing: 4.0, mainAxisSpacing: 8.0, children: [
-                  GestureDetector(
-                    onTap: () {
-                      URL.launch('https://www.lpu.edu.ph/');
-                    },
-                    child: Card(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                      child: Container(
+                child: GridView.count(
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 4.0,
+                  mainAxisSpacing: 8.0,
+                  children: portals.map((portal) {
+                    Color cardColor = Color(int.parse(portal.color.replaceAll("#", "0xFF")));
+                    return GestureDetector(
+                      onTap: () {
+                        // Open the portal link
+                        URL.launch(portal.link);
+                      },
+                      child: Card(
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8.0)),
+                        child: Container(
                           padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(color: AppConfig.appSecondaryTheme, borderRadius: BorderRadius.circular(8.0)),
+                          decoration: BoxDecoration(
+                            color: cardColor,
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
                           child: Center(
-                            child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: <Widget>[
-                              Expanded(child: Image.asset('assets/images/home_contact_information.png', fit: BoxFit.contain)),
-                              const SizedBox(height: 16),
-                              const Text('LPU Official Website',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Color(0xFFFFFFFF),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  )),
-                            ]),
-                          )),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      URL.launch('https://lpu.mrooms.net/');
-                    },
-                    child: Card(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                      child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(color: AppConfig.appSecondaryTheme, borderRadius: BorderRadius.circular(8.0)),
-                          child: Center(
-                            child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: <Widget>[
-                              Expanded(child: Image.asset('assets/images/home_mylpu_classroom.png', fit: BoxFit.contain)),
-                              const SizedBox(height: 16),
-                              const Text('myLPU e-Learning',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Color(0xFFFFFFFF),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  )),
-                            ]),
-                          )),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      URL.launch('https://aimscavite.lpu.edu.ph/lpucvt/students/');
-                    },
-                    child: Card(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-                      child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(color: AppConfig.appSecondaryTheme, borderRadius: BorderRadius.circular(8.0)),
-                          child: Center(
-                            child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: <Widget>[
-                              Expanded(child: Image.asset('assets/images/home_aims_student_portal.png', fit: BoxFit.contain)),
-                              const SizedBox(height: 16),
-                              const Text('AIMS Student Portal',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Color(0xFFFFFFFF),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  )),
-                            ]),
-                          )),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => BorrowReturn(userEmail: getCurrentUser.email!),
-                        ),
-                      );
-                    },
-                    child: Card(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppConfig.appSecondaryTheme,
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                        child: Center(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: <Widget>[
-                              Expanded(
-                                child: Image.asset(
-                                  'assets/images/home_library_module.png',
-                                  fit: BoxFit.contain,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: <Widget>[
+                                Expanded(
+                                  child: portal.img.isNotEmpty
+                                      ? Image.asset(
+                                          'assets/images/${portal.img}',
+                                          fit: BoxFit.contain,
+                                        )
+                                      : SizedBox(), // Check if img is empty
                                 ),
-                              ),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'Book Reservation Portal',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Color(0xFFFFFFFF),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  )),
-                            ]),
-                          )),
-                    ),
-                  ),
-                ])),
-          ]),
+                                const SizedBox(height: 16),
+                                Text(
+                                  portal.title,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFFFFF),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
