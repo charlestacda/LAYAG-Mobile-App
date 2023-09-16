@@ -38,6 +38,23 @@ class Portal {
   }
 }
 
+class Tip {
+  final int id;
+  final String content;
+
+  Tip({
+    required this.id,
+    required this.content,
+  });
+
+  factory Tip.fromJson(Map<String, dynamic> json) {
+    return Tip(
+      id: json['id'],
+      content: json['content'],
+    );
+  }
+}
+
 
 class Home extends StatefulWidget {
   const Home({Key? key}) : super(key: key);
@@ -51,16 +68,54 @@ class HomeState extends State<Home> {
   Random random = Random();
   int randomNumber = 0;
   List<Portal> portals = [];
+  List<String> fetchedTips = [];
+  String randomTip = '';
 
   @override
   void initState() {
     super.initState();
     randomNumber = random.nextInt(8);
-    checkAndShowDialog();
+    fetchTips();
     fetchPortals();
   }
 
-  void checkAndShowDialog() async {
+
+  Future<void> fetchTips() async {
+  try {
+    final response = await http.get(
+      Uri.parse('http://charlestacda-layag_cms.mdbgo.io/tips_view.php'),
+    );
+
+    if (response.statusCode == 200) {
+      List<dynamic> tipList = json.decode(response.body);
+      List<String> fetchedTipsList =
+          tipList.map((json) => json['content'].toString()).toList();
+      setState(() {
+        fetchedTips = fetchedTipsList; // Populate the fetchedTips list
+
+        if (fetchedTips.isNotEmpty) {
+          // Generate a random number within the valid range
+          int randomIndex = random.nextInt(fetchedTips.length);
+          // Access the random tip
+          randomTip = fetchedTips[randomIndex]; // Set the randomTip variable
+          
+          // Call checkAndShowDialog here, as data has been fetched successfully
+          checkAndShowDialog();
+        }
+      });
+    } else {
+      print('Failed to load tips: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error fetching tips: $e');
+  }
+}
+
+
+
+
+
+void checkAndShowDialog() async {
     // Get the shared preferences instance
     SharedPreferences prefs = await SharedPreferences.getInstance();
     // Check if the dialog has been shown before
@@ -83,7 +138,7 @@ class HomeState extends State<Home> {
               mainAxisAlignment: MainAxisAlignment.center,
             ),
             content: Text(
-              ListConfig.popups[randomNumber],
+              randomTip,
               textAlign: TextAlign.center,
               style: const TextStyle(
                   fontFamily: 'Futura',
@@ -96,6 +151,9 @@ class HomeState extends State<Home> {
       prefs.setBool('dialogShown', true);
     }
   }
+
+
+
 
   Future<void> fetchPortals() async {
   try {
@@ -190,11 +248,11 @@ class HomeState extends State<Home> {
                               children: <Widget>[
                                 Expanded(
                                   child: portal.img.isNotEmpty
-                                      ? Image.asset(
-                                          'assets/images/${portal.img}',
-                                          fit: BoxFit.contain,
-                                        )
-                                      : SizedBox(), // Check if img is empty
+                                    ? Image.network(
+                                        'http://charlestacda-layag_cms.mdbgo.io/images/${portal.img}',
+                                        fit: BoxFit.contain,
+                                      )
+                                    : SizedBox(), // Check if img is empty
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
