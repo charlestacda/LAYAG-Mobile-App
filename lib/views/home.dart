@@ -216,65 +216,64 @@ void checkAndShowDialog() async {
               width: double.infinity,
             ),
             Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                height: 700,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                ),
-                child: GridView.count(
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 4.0,
-                  mainAxisSpacing: 8.0,
-                  children: portals.map((portal) {
-                    Color cardColor = Color(int.parse(portal.color.replaceAll("#", "0xFF")));
-                    return GestureDetector(
-                      onTap: () {
-                        // Open the portal link
-                        URL.launch(portal.link);
-                      },
-                      child: Card(
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.0)),
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: cardColor,
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
-                          child: Center(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: <Widget>[
-                                Expanded(
-                                  child: portal.img.isNotEmpty
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+              ),
+              child: GridView.count(
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                crossAxisSpacing: 4.0,
+                mainAxisSpacing: 8.0,
+                shrinkWrap: true, // Added this to allow content to wrap its height
+                children: portals.map((portal) {
+                  Color cardColor = Color(int.parse(portal.color.replaceAll("#", "0xFF")));
+                  return GestureDetector(
+                    onTap: () {
+                      // Open the portal link
+                      URL.launch(portal.link);
+                    },
+                    child: Card(
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0)),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        child: Center(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: <Widget>[
+                              Expanded(
+                                child: portal.img.isNotEmpty
                                     ? Image.network(
-                                        'http://charlestacda-layag_cms.mdbgo.io/images/${portal.img}',
-                                        fit: BoxFit.contain,
-                                      )
+                                  'http://charlestacda-layag_cms.mdbgo.io/images/${portal.img}',
+                                  fit: BoxFit.contain,
+                                )
                                     : SizedBox(), // Check if img is empty
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                portal.title,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Color(0xFFFFFFFF),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
                                 ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  portal.title,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Color(0xFFFFFFFF),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    );
-                  }).toList(),
-                ),
+                    ),
+                  );
+                }).toList(),
               ),
-            ],
-          ),
+            ),
+          ]),
         ),
       ),
     );
