@@ -12,6 +12,7 @@ import 'package:lpu_app/views/borrow_return.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+
 class Portal {
   final int id;
   final String title;
@@ -71,12 +72,19 @@ class HomeState extends State<Home> {
   List<String> fetchedTips = [];
   String randomTip = '';
 
+  List<Portal> cachedPortals = [];
+  DateTime lastCacheRefresh = DateTime(0);
+
   @override
   void initState() {
     super.initState();
     randomNumber = random.nextInt(8);
     fetchTips();
-    fetchPortals();
+
+    // Check if portals are already cached and cache is expired
+    if (cachedPortals.isEmpty || DateTime.now().difference(lastCacheRefresh).inMinutes > 30) {
+      fetchPortals(); // Fetch portals if they are not cached or cache is expired (e.g., after 30 minutes)
+    }
   }
 
 
@@ -156,27 +164,29 @@ void checkAndShowDialog() async {
 
 
   Future<void> fetchPortals() async {
-  try {
-    final response = await http.get(
-      Uri.parse('http://charlestacda-layag_cms.mdbgo.io/portals_view.php'),
-    );
+    try {
+      final response = await http.get(
+        Uri.parse('http://charlestacda-layag_cms.mdbgo.io/portals_view.php'),
+      );
 
-    if (response.statusCode == 200) {
-      List<dynamic> portalList = json.decode(response.body);
+      if (response.statusCode == 200) {
+        List<dynamic> portalList = json.decode(response.body);
 
-      List<Portal> fetchedPortals =
-          portalList.map((json) => Portal.fromJson(json)).toList();
+        List<Portal> fetchedPortals =
+            portalList.map((json) => Portal.fromJson(json)).toList();
 
-      setState(() {
-        portals = fetchedPortals;
-      });
-    } else {
-      print('Failed to load portals: ${response.statusCode}');
+        setState(() {
+          portals = fetchedPortals;
+          cachedPortals = fetchedPortals; // Cache the fetched portals
+          lastCacheRefresh = DateTime.now(); // Update the cache refresh timestamp
+        });
+      } else {
+        print('Failed to load portals: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching portals: $e');
     }
-  } catch (e) {
-    print('Error fetching portals: $e');
   }
-}
 
 
 
