@@ -53,11 +53,8 @@ class LoginState extends State<Login> {
               height: double.infinity,
               width: double.infinity,
               decoration: const BoxDecoration(
-                  gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [
-                AppConfig.appPrimaryTheme,
-                AppConfig.appPrimaryTheme,
-                AppConfig.appPrimaryTheme,
-              ])),
+                  color: Color(0xFFFFFFFF)
+               ),
               child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,
@@ -71,15 +68,16 @@ class LoginState extends State<Login> {
                       child: Column(
                         children: [
                           SvgPicture.asset(
-                            'assets/images/Layag_Logo.svg',
+                            'assets/images/Layag_Logo1.svg',
                             width: 200, // Adjust the width as needed
                             height: 200, // Adjust the height as needed
                           ),
+                          SizedBox(height: 16), // Adjust the height to create the desired space
                           const Text(
                             'LYCEUM OF THE PHILIPPINES UNIVERSITY',
                             style: TextStyle(
                               fontFamily: 'ZapfHumanist',
-                              color: Colors.white,
+                              color: Color(0xFFA33334),
                               fontSize: 16,
                             ),
                           ),
@@ -87,7 +85,7 @@ class LoginState extends State<Login> {
                             'CAVITE CAMPUS',
                             style: TextStyle(
                               fontFamily: 'ZapfHumanist',
-                              color: Colors.white,
+                              color: Color(0xFFA33334),
                               fontSize: 12,
                             ),
                           ),
@@ -112,7 +110,11 @@ class LoginState extends State<Login> {
                             keyboardType: TextInputType.text,
                             style: const TextStyle(fontFamily: 'Arial', color: Colors.black),
                             decoration: const InputDecoration(
-                              border: InputBorder.none,
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: Color(0xFFA33334), // Border color
+                                ),
+                              ),
                               contentPadding: EdgeInsets.only(left: 16, right: 16),
                               prefixIcon: Icon(
                                 Icons.person,
@@ -145,7 +147,11 @@ class LoginState extends State<Login> {
                             keyboardType: TextInputType.visiblePassword,
                             style: const TextStyle(fontFamily: 'Arial', color: Colors.black),
                             decoration: const InputDecoration(
-                              border: InputBorder.none,
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: Color(0xFFA33334), // Border color
+                                ),
+                              ),
                               contentPadding: EdgeInsets.only(left: 16, right: 16),
                               prefixIcon: Icon(
                                 Icons.lock,
@@ -168,7 +174,7 @@ class LoginState extends State<Login> {
                           'Forgot Password?',
                           style: TextStyle(
                             fontFamily: 'Arial',
-                            color: Colors.white,
+                            color: Color(0xFFA33334),
                             fontSize: 12,
                           ),
                         ),
@@ -235,18 +241,22 @@ class LoginState extends State<Login> {
                           }
                         },
                         child: isLoggingIn
-                            ? const CircularProgressIndicator()
+                            ? const CircularProgressIndicator(color: AppConfig.appWhiteAlphaTheme,)
                             : const Text(
                           'LOGIN',
-                          style: TextStyle(fontFamily: 'Futura', color: AppConfig.appSecondaryTheme, fontSize: 16, fontWeight: FontWeight.w600),
+                          style: TextStyle(fontFamily: 'Futura', color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
                         ),
                         style: ElevatedButton.styleFrom(
                           elevation: 5,
-                          backgroundColor: Colors.white,
+                          backgroundColor: Color(0xFFA33334),
                           foregroundColor: const Color(0xffD0D0D0),
                           padding: const EdgeInsets.all(16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(5),
+                          ),
+                          side: const BorderSide(
+                            width: 2,
+                            color: Color(0xFFA33334),
                           ),
                         ),
                       ),
@@ -260,14 +270,14 @@ class LoginState extends State<Login> {
                         },
                         child: const Text(
                           'REGISTER',
-                          style: TextStyle(fontFamily: 'Futura', color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                          style: TextStyle(fontFamily: 'Futura', color: Color(0xFFA33334), fontSize: 16, fontWeight: FontWeight.w600),
                         ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.all(16),
                           foregroundColor: AppConfig.appSecondaryTheme,
                           side: const BorderSide(
                             width: 2,
-                            color: Colors.white,
+                            color: Color(0xFFA33334),
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(5),
