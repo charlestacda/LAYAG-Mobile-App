@@ -55,5 +55,15 @@
 			<string>sms</string>
 			<string>file</string>
 		</array>
+		<key>CFBundleIcons</key>
+        <dict>
+            <key>CFBundlePrimaryIcon</key>
+            <dict>
+                <key>CFBundleIconFiles</key>
+                <array>
+                    <string>layag_app</string>
+                </array>
+            </dict>
+        </dict>
 	</dict>
 </plist>

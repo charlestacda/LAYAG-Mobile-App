@@ -159,6 +159,7 @@ class LoginState extends State<Login> {
                               ),
                               hintText: 'Password',
                               hintStyle: TextStyle(color: Colors.grey),
+                              isCollapsed: true,
                             ),
                           ),
                         )
