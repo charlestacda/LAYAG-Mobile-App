@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:lpu_app/config/app_config.dart';
-import 'package:lpu_app/views/components/events.dart';
+import 'package:intl/intl.dart';
+import '../utils.dart';
 import 'package:lpu_app/views/help.dart';
 import 'package:lpu_app/views/components/app_drawer.dart';
 
@@ -10,47 +9,118 @@ class Calendar extends StatefulWidget {
   const Calendar({Key? key}) : super(key: key);
 
   @override
-  CalendarState createState() => CalendarState();
+  _CalendarState createState() => _CalendarState();
 }
 
-class CalendarState extends State<Calendar> {
-  late final ValueNotifier<List<Events>> selectedEvents;
-  CalendarFormat calendarFormat = CalendarFormat.month;
-  RangeSelectionMode rangeSelectionMode = RangeSelectionMode.toggledOff;
-  DateTime focusedDay = DateTime.now();
-  DateTime? selectedDay;
-  DateTime? rangeStart;
-  DateTime? rangeEnd;
-  String date = DateFormat('MMMM dd, yyyy').format(DateTime.now());
-
-  List<Events> getEventsForDay(DateTime day) {
-    return events[day] ?? [];
-  }
-
-  List<Events> getEventsForRange(DateTime start, DateTime end) {
-    final days = daysInRange(start, end);
-
-    return [
-      for (final day in days) ...getEventsForDay(day),
-    ];
-  }
+class _CalendarState extends State<Calendar> {
+  late final ValueNotifier<List<Event>> _selectedEvents;
+  CalendarFormat _calendarFormat = CalendarFormat.month;
+  RangeSelectionMode _rangeSelectionMode = RangeSelectionMode.toggledOff;
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+  DateTime? _rangeStart;
+  DateTime? _rangeEnd;
 
   @override
   void initState() {
     super.initState();
 
-    selectedDay = focusedDay;
-    selectedEvents = ValueNotifier(getEventsForDay(selectedDay!));
+    _selectedDay = _focusedDay;
+    _selectedEvents = ValueNotifier([]);
+
+    loadEvents().then((events) {
+      _selectedEvents.value = _getEventsForDay(_selectedDay!);
+    });
   }
 
   @override
   void dispose() {
-    selectedEvents.dispose();
+    _selectedEvents.dispose();
     super.dispose();
   }
 
+  String _formatTime(String dateTimeString) {
+    final dateTime = DateTime.parse(dateTimeString);
+    final formattedTime = DateFormat('h:mm a').format(dateTime);
+    return formattedTime;
+  }
+
+  void _showEventDetails(Event event) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Event Details'),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Title: ${event.title}'),
+              Text('Description: ${event.description}'),
+              Text('Start Time: ${_formatTime(event.startDatetime)}'),
+              Text('End Time: ${_formatTime(event.endDatetime)}'),
+              Text('Location: ${event.location}'),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Close'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  List<Event> _getEventsForDay(DateTime day) {
+    return kEvents[day] ?? [];
+  }
+
+  List<Event> _getEventsForRange(DateTime start, DateTime end) {
+    final days = daysInRange(start, end);
+
+    return [
+      for (final d in days) ..._getEventsForDay(d),
+    ];
+  }
+
+  void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
+    if (!isSameDay(_selectedDay, selectedDay)) {
+      setState(() {
+        _selectedDay = selectedDay;
+        _focusedDay = focusedDay;
+        _rangeStart = null;
+        _rangeEnd = null;
+        _rangeSelectionMode = RangeSelectionMode.toggledOff;
+      });
+
+      _selectedEvents.value = _getEventsForDay(selectedDay);
+    }
+  }
+
+  void _onRangeSelected(DateTime? start, DateTime? end, DateTime focusedDay) {
+    setState(() {
+      _selectedDay = null;
+      _focusedDay = focusedDay;
+      _rangeStart = start;
+      _rangeEnd = end;
+      _rangeSelectionMode = RangeSelectionMode.toggledOn;
+    });
+
+    if (start != null && end != null) {
+      _selectedEvents.value = _getEventsForRange(start, end);
+    } else if (start != null) {
+      _selectedEvents.value = _getEventsForDay(start);
+    } else if (end != null) {
+      _selectedEvents.value = _getEventsForDay(end);
+    }
+  }
+
   @override
-  Widget build(BuildContext context) => Scaffold(
+Widget build(BuildContext context) => Scaffold(
       drawer: const AppDrawer(),
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -71,138 +141,106 @@ class CalendarState extends State<Calendar> {
           IconButton(
             icon: const Icon(Icons.help_outline),
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const Help()));
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const Help()),
+              );
             },
           ),
         ],
       ),
-      body: SizedBox(
-        height: double.infinity,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 32, 16, 64),
-          child: Column(
-            mainAxisSize: MainAxisSize.max,
-            children: [
-              Container(
-                alignment: Alignment.center,
-                child: Image.asset(
-                  'assets/images/school_calendar_header.png',
-                  width: double.infinity,
-                ),
-              ),
-              TableCalendar<Events>(
-                focusedDay: focusedDay,
-                firstDay: eventFirstDay,
-                lastDay: eventLastDay,
-                selectedDayPredicate: (day) => isSameDay(selectedDay, day),
-                rangeStartDay: rangeStart,
-                rangeEndDay: rangeEnd,
-                calendarFormat: calendarFormat,
-                rangeSelectionMode: rangeSelectionMode,
-                eventLoader: getEventsForDay,
-                startingDayOfWeek: StartingDayOfWeek.sunday,
-                calendarStyle: CalendarStyle(
-                  isTodayHighlighted: true,
-                  selectedDecoration: BoxDecoration(
-                    color: const Color(0xffD94141),
-                    shape: BoxShape.rectangle,
-                    borderRadius: BorderRadius.circular(5.0),
-                  ),
-                  selectedTextStyle: const TextStyle(color: Colors.white),
-                  todayDecoration: BoxDecoration(
-                    color: AppConfig.appSecondaryTheme,
-                    shape: BoxShape.rectangle,
-                    borderRadius: BorderRadius.circular(5.0),
-                  ),
-                  defaultDecoration: BoxDecoration(
-                    shape: BoxShape.rectangle,
-                    borderRadius: BorderRadius.circular(5.0),
-                  ),
-                  defaultTextStyle: const TextStyle(fontWeight: FontWeight.bold),
-                  weekendDecoration: BoxDecoration(
-                    shape: BoxShape.rectangle,
-                    borderRadius: BorderRadius.circular(5.0),
-                  ),
-                ),
-                headerStyle: const HeaderStyle(
-                  formatButtonVisible: false,
-                  titleCentered: true,
-                  formatButtonShowsNext: false,
-                  formatButtonDecoration: BoxDecoration(color: AppConfig.appSecondaryTheme),
-                  titleTextStyle: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 24,
-                  ),
-                ),
-                onDaySelected: (DateTime selectedDay, DateTime focusedDay) {
-                  if (!isSameDay(selectedDay, selectedDay)) {
-                    setState(() {
-                      selectedDay = selectedDay;
-                      focusedDay = focusedDay;
-                      rangeStart = null;
-                      rangeEnd = null;
-                      rangeSelectionMode = RangeSelectionMode.toggledOff;
-                    });
-
-                    selectedEvents.value = getEventsForDay(selectedDay);
-                  }
-                },
-                onRangeSelected: (DateTime? start, DateTime? end, DateTime focusedDay) {
-                  setState(() {
-                    selectedDay = null;
-                    focusedDay = focusedDay;
-                    rangeStart = start;
-                    rangeEnd = end;
-                    rangeSelectionMode = RangeSelectionMode.toggledOn;
-                  });
-
-                  if (start != null && end != null) {
-                    selectedEvents.value = getEventsForRange(start, end);
-                  } else if (start != null) {
-                    selectedEvents.value = getEventsForDay(start);
-                  } else if (end != null) {
-                    selectedEvents.value = getEventsForDay(end);
-                  }
-                },
-                onFormatChanged: (format) {
-                  if (calendarFormat != format) {
-                    setState(() {
-                      calendarFormat = format;
-                    });
-                  }
-                },
-                onPageChanged: (focusedDay) {
-                  focusedDay = focusedDay;
-                },
-              ),
-              const SizedBox(height: 20.0),
-              Expanded(
-                child: ValueListenableBuilder<List<Events>>(
-                  valueListenable: selectedEvents,
-                  builder: (context, value, _) {
-                    return ListView.builder(
-                        itemCount: value.length,
-                        itemBuilder: (context, index) {
-                          return Container(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 12.0,
-                              vertical: 4.0,
-                            ),
-                            decoration: BoxDecoration(
-                              border: Border.all(),
-                              borderRadius: BorderRadius.circular(12.0),
-                            ),
-                            child: ListTile(
-                              onTap: () => {},
-                              title: Text('${value[index]}'),
-                            ),
-                          );
-                        });
-                  },
-                ),
-              ),
-            ],
+      body: Column(
+        children: [
+          Container(
+            alignment: Alignment.center,
+            child: Image.asset(
+              'assets/images/school_calendar_header.png',
+              width: double.infinity,
+            ),
           ),
-        ),
-      ));
+          TableCalendar<Event>(
+            firstDay: kFirstDay,
+            lastDay: kLastDay,
+            focusedDay: _focusedDay,
+            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+            rangeStartDay: _rangeStart,
+            rangeEndDay: _rangeEnd,
+            calendarFormat: _calendarFormat,
+            rangeSelectionMode: _rangeSelectionMode,
+            eventLoader: _getEventsForDay,
+            startingDayOfWeek: StartingDayOfWeek.monday,
+            calendarStyle: CalendarStyle(
+              outsideDaysVisible: false,
+              todayDecoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color.fromARGB(255, 129, 126, 126),
+              ),
+              selectedDecoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFFA33334),
+              ),
+            ),
+            onDaySelected: _onDaySelected,
+            onRangeSelected: _onRangeSelected,
+            onFormatChanged: (format) {
+              if (_calendarFormat != format) {
+                setState(() {
+                  _calendarFormat = format;
+                });
+              }
+            },
+            onPageChanged: (focusedDay) {
+              _focusedDay = focusedDay;
+            },
+          ),
+          const SizedBox(height: 8.0),
+          Expanded(
+            child: ValueListenableBuilder<List<Event>>(
+              valueListenable: _selectedEvents,
+              builder: (context, value, _) {
+                return ListView.builder(
+                  itemCount: value.length,
+                  itemBuilder: (context, index) {
+                    final event = value[index];
+                    return GestureDetector(
+                      onTap: () => _showEventDetails(event),
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 12.0,
+                          vertical: 4.0,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(),
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
+                        child: ListTile(
+                          title: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '${event.title}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                '${_formatTime(event.startDatetime)} - ${_formatTime(event.endDatetime)}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+
 }
