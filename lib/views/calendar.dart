@@ -223,12 +223,6 @@ Widget build(BuildContext context) => Scaffold(
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              Text(
-                                '${_formatTime(event.startDatetime)} - ${_formatTime(event.endDatetime)}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.normal,
-                                ),
-                              ),
                             ],
                           ),
                         ),
