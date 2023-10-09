@@ -109,16 +109,26 @@ class LoginState extends State<Login> {
                             textAlignVertical: TextAlignVertical.center,
                             keyboardType: TextInputType.text,
                             style: const TextStyle(fontFamily: 'Arial', color: Colors.black),
-                            decoration: const InputDecoration(
-                              enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: Color(0xFFA33334), // Border color
-                                ),
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(
+                                borderSide: BorderSide(color: Color(0xFFA33334)), // Border color
+                                borderRadius: BorderRadius.circular(5),
                               ),
-                              contentPadding: EdgeInsets.only(left: 16, right: 16),
-                              prefixIcon: Icon(
-                                Icons.person,
-                                color: Color(0xffA62D38),
+                              contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 12), // Add space around text input
+                              prefixIcon: Padding(
+                                padding: const EdgeInsets.only(left: 0, right: 8), // Add space around the Icon
+                                child: Container(
+                                  padding: EdgeInsets.all(10), // Padding around the icon
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFFA33334),
+                                    border: Border.all(color: Color(0xFFA33334), width: 2), // Border color and width
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                  child: Icon(
+                                    Icons.person,
+                                    color: Color(0xFFFFFFFF), // Icon color
+                                  ),
+                                ),
                               ),
                               isCollapsed: true,
                               hintText: 'Student/Faculty Email',
@@ -146,20 +156,30 @@ class LoginState extends State<Login> {
                             textAlignVertical: TextAlignVertical.center,
                             keyboardType: TextInputType.visiblePassword,
                             style: const TextStyle(fontFamily: 'Arial', color: Colors.black),
-                            decoration: const InputDecoration(
-                              enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: Color(0xFFA33334), // Border color
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(
+                                borderSide: BorderSide(color: Color(0xFFA33334)), // Border color
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                              prefixIcon: Padding(
+                                padding: const EdgeInsets.only(left: 0, right: 8), // Add space around the Icon
+                                child: Container(
+                                  padding: EdgeInsets.all(10), // Padding around the icon
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFFA33334),
+                                    border: Border.all(color: Color(0xFFA33334), width: 2), // Border color and width
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                  child: Icon(
+                                    Icons.lock,
+                                    color: Color(0xFFFFFFFF), // Icon color
+                                  ),
                                 ),
                               ),
-                              contentPadding: EdgeInsets.only(left: 16, right: 16),
-                              prefixIcon: Icon(
-                                Icons.lock,
-                                color: Color(0xffA62D38),
-                              ),
+                              isCollapsed: true,
                               hintText: 'Password',
                               hintStyle: TextStyle(color: Colors.grey),
-                              isCollapsed: true,
                             ),
                           ),
                         )
