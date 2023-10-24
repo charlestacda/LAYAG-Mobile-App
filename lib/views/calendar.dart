@@ -13,7 +13,7 @@ class Calendar extends StatefulWidget {
 }
 
 class _CalendarState extends State<Calendar> {
-  late final ValueNotifier<List<Event>> _selectedEvents;
+  late final ValueNotifier<Map<DateTime, List<Event>>> _selectedEvents;
   CalendarFormat _calendarFormat = CalendarFormat.month;
   RangeSelectionMode _rangeSelectionMode = RangeSelectionMode.toggledOff;
   DateTime _focusedDay = DateTime.now();
@@ -21,17 +21,31 @@ class _CalendarState extends State<Calendar> {
   DateTime? _rangeStart;
   DateTime? _rangeEnd;
 
-  @override
-  void initState() {
-    super.initState();
+  Future<Map<DateTime, List<Event>>> _loadEvents() async {
+  final events = await fetchEvents();
+  kEvents.clear();
+  kEvents.addAll(events);
+  return events;
+}
 
-    _selectedDay = _focusedDay;
-    _selectedEvents = ValueNotifier([]);
+@override
+void initState() {
+  super.initState();
 
-    loadEvents().then((events) {
-      _selectedEvents.value = _getEventsForDay(_selectedDay!);
+  _selectedDay = _focusedDay;
+  _selectedEvents = ValueNotifier({});
+
+  // Initialize _selectedEvents with an empty map
+  _selectedEvents.value = {};
+
+  // Load events and populate _selectedEvents
+  _loadEvents().then((events) {
+    setState(() {
+      _selectedEvents.value = events;
     });
-  }
+  });
+}
+
 
   @override
   void dispose() {
@@ -76,7 +90,7 @@ class _CalendarState extends State<Calendar> {
   }
 
   List<Event> _getEventsForDay(DateTime day) {
-    return kEvents[day] ?? [];
+    return _selectedEvents.value[day] ?? [];
   }
 
   List<Event> _getEventsForRange(DateTime start, DateTime end) {
@@ -96,8 +110,6 @@ class _CalendarState extends State<Calendar> {
         _rangeEnd = null;
         _rangeSelectionMode = RangeSelectionMode.toggledOff;
       });
-
-      _selectedEvents.value = _getEventsForDay(selectedDay);
     }
   }
 
@@ -109,132 +121,124 @@ class _CalendarState extends State<Calendar> {
       _rangeEnd = end;
       _rangeSelectionMode = RangeSelectionMode.toggledOn;
     });
-
-    if (start != null && end != null) {
-      _selectedEvents.value = _getEventsForRange(start, end);
-    } else if (start != null) {
-      _selectedEvents.value = _getEventsForDay(start);
-    } else if (end != null) {
-      _selectedEvents.value = _getEventsForDay(end);
-    }
   }
 
   @override
-Widget build(BuildContext context) => Scaffold(
-      drawer: const AppDrawer(),
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: ClipOval(
-              child: Image.asset(
-                'assets/images/user.png',
-                width: 24,
-                height: 24,
+  Widget build(BuildContext context) => Scaffold(
+        drawer: const AppDrawer(),
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          leading: Builder(
+            builder: (context) => IconButton(
+              icon: ClipOval(
+                child: Image.asset(
+                  'assets/images/user.png',
+                  width: 24,
+                  height: 24,
+                ),
               ),
-            ),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
-        title: Image.asset('assets/images/lpu_title.png'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.help_outline),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const Help()),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Container(
-            alignment: Alignment.center,
-            child: Image.asset(
-              'assets/images/school_calendar_header.png',
-              width: double.infinity,
+              onPressed: () => Scaffold.of(context).openDrawer(),
             ),
           ),
-          TableCalendar<Event>(
-            firstDay: kFirstDay,
-            lastDay: kLastDay,
-            focusedDay: _focusedDay,
-            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-            rangeStartDay: _rangeStart,
-            rangeEndDay: _rangeEnd,
-            calendarFormat: _calendarFormat,
-            rangeSelectionMode: _rangeSelectionMode,
-            eventLoader: _getEventsForDay,
-            startingDayOfWeek: StartingDayOfWeek.monday,
-            calendarStyle: CalendarStyle(
-              outsideDaysVisible: false,
-              todayDecoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color.fromARGB(255, 129, 126, 126),
-              ),
-              selectedDecoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color(0xFFA33334),
-              ),
-            ),
-            onDaySelected: _onDaySelected,
-            onRangeSelected: _onRangeSelected,
-            onFormatChanged: (format) {
-              if (_calendarFormat != format) {
-                setState(() {
-                  _calendarFormat = format;
-                });
-              }
-            },
-            onPageChanged: (focusedDay) {
-              _focusedDay = focusedDay;
-            },
-          ),
-          const SizedBox(height: 8.0),
-          Expanded(
-            child: ValueListenableBuilder<List<Event>>(
-              valueListenable: _selectedEvents,
-              builder: (context, value, _) {
-                return ListView.builder(
-                  itemCount: value.length,
-                  itemBuilder: (context, index) {
-                    final event = value[index];
-                    return GestureDetector(
-                      onTap: () => _showEventDetails(event),
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 12.0,
-                          vertical: 4.0,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border.all(),
-                          borderRadius: BorderRadius.circular(12.0),
-                        ),
-                        child: ListTile(
-                          title: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                '${event.title}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
+          title: Image.asset('assets/images/lpu_title.png'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.help_outline),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const Help()),
                 );
               },
             ),
-          ),
-        ],
-      ),
-    );
-
+          ],
+        ),
+        body: Column(
+          children: [
+            Container(
+              alignment: Alignment.center,
+              child: Image.asset(
+                'assets/images/school_calendar_header.png',
+                width: double.infinity,
+              ),
+            ),
+            TableCalendar<Event>(
+              firstDay: kFirstDay,
+              lastDay: kLastDay,
+              focusedDay: _focusedDay,
+              selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+              rangeStartDay: _rangeStart,
+              rangeEndDay: _rangeEnd,
+              calendarFormat: _calendarFormat,
+              rangeSelectionMode: _rangeSelectionMode,
+              eventLoader: _getEventsForDay,
+              startingDayOfWeek: StartingDayOfWeek.monday,
+              calendarStyle: CalendarStyle(
+                outsideDaysVisible: false,
+                todayDecoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color.fromARGB(255, 129, 126, 126),
+                ),
+                selectedDecoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFFA33334),
+                ),
+              ),
+              onDaySelected: _onDaySelected,
+              onRangeSelected: _onRangeSelected,
+              onFormatChanged: (format) {
+                if (_calendarFormat != format) {
+                  setState(() {
+                    _calendarFormat = format;
+                  });
+                }
+              },
+              onPageChanged: (focusedDay) {
+                _focusedDay = focusedDay;
+              },
+            ),
+            const SizedBox(height: 8.0),
+            Expanded(
+              child: ValueListenableBuilder<Map<DateTime, List<Event>>>(
+                valueListenable: _selectedEvents,
+                builder: (context, value, _) {
+                  final selectedEvents = _getEventsForDay(_selectedDay!);
+                  return ListView.builder(
+                    itemCount: selectedEvents.length,
+                    itemBuilder: (context, index) {
+                      final event = selectedEvents[index];
+                      return GestureDetector(
+                        onTap: () => _showEventDetails(event),
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 12.0,
+                            vertical: 4.0,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(),
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          child: ListTile(
+                            title: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${event.title}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
 }
