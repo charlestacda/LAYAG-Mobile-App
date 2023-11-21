@@ -1,22 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:lpu_app/config/app_config.dart';
 import 'package:lpu_app/utilities/url.dart';
-import 'package:http/http.dart' as http;
-
-class HelpModel {
-  final int helpId;
-  final String title;
-  final String content;
-  final String img;
-
-  HelpModel({
-    required this.helpId,
-    required this.title,
-    required this.content,
-    required this.img,
-  });
-}
 
 class Help extends StatefulWidget {
   const Help({Key? key}) : super(key: key);
@@ -25,25 +9,6 @@ class Help extends StatefulWidget {
   HelpState createState() => HelpState();
 }
 
-Future<List<HelpModel>> fetchHelpData() async {
-  final response = await http.get(
-    Uri.parse('http://charlestacda-layag_cms.mdbgo.io/helps_view.php'),
-  );
-  if (response.statusCode == 200) {
-    final List<dynamic> data = json.decode(response.body);
-    final List<HelpModel> helpList = data
-        .map((item) => HelpModel(
-              helpId: item['help_id'],
-              title: item['title'],
-              content: item['content'],
-              img: item['img'],
-            ))
-        .toList();
-    return helpList;
-  } else {
-    throw Exception('Failed to load data');
-  }
-}
 class HelpState extends State<Help> {
   @override
   Widget build(BuildContext context) {
@@ -58,107 +23,215 @@ class HelpState extends State<Help> {
           onPressed: () => Navigator.pop(context, false),
         ),
       ),
-      body: FutureBuilder<List<HelpModel>>(
-        future: fetchHelpData(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return CircularProgressIndicator();
-          } else if (snapshot.hasError) {
-            return Text('Error: ${snapshot.error}');
-          } else if (snapshot.hasData) {
-            final helpData = snapshot.data!;
-            return CustomScrollView(
-              slivers: <Widget>[
-                SliverToBoxAdapter(
-                  child: Column(
-                    children: [
-                      // "HOW TO USE" text with reduced top padding
-                      Padding(
-                        padding: const EdgeInsets.only(top: 50), // Reduced padding
-                        child: Text(
-                          'HOW TO USE',
-                          style: TextStyle(
-                            fontFamily: 'Futura',
-                            color: Color(0xffD94141),
-                            fontSize: 28,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10), // Reduced space
-                    ],
+      body: SingleChildScrollView(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  width: double.infinity,
+                  alignment: Alignment.center,
+                  child: const Text(
+                    'HOW TO USE',
+                    style: TextStyle(
+                      fontFamily: 'Futura',
+                      color: Color(0xffD94141),
+                      fontSize: 28,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (BuildContext context, int index) {
-                      final item = helpData[index];
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RichText(
+                      text: const TextSpan(
+                        style: TextStyle(fontSize: 15, color: Colors.black),
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.all(10), // Reduced padding
-                            child: Text(
-                              item.title,
-                              style: TextStyle(
-                                fontSize: 25,
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                          TextSpan(
+                            text:
+                            'The LPU-C mobile application is designed to provide digital services for the entire '
+                                'LPU-Cavite institution and its stakeholders. The goal is to put focus on the importance and continuous '
+                                'improvement of customer services, digital connectedness, seamless cross-device integration, and '
+                                'act as a one-stop-shop that is accessible, centralized and mobile-driven.',
                           ),
-                          if (item.img != 'default.png')
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-                              child: Image.network(
-                                'http://charlestacda-layag_cms.mdbgo.io/images/${item.img}',
-                                width: double.infinity,
-                                height: 400,
-                              ),
-                            ),
-                          Padding(
-                            padding: const EdgeInsets.all(10), // Reduced padding
-                            child: RichText(
-                              text: TextSpan(
-                                style: TextStyle(fontSize: 15, color: Colors.black),
-                                children: [
-                                  TextSpan(
-                                    text: item.content,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 10), // Reduced space
                         ],
-                      );
-                    },
-                    childCount: helpData.length,
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(10), // Reduced padding
-                    child: Column(
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    RichText(
+                      text: const TextSpan(
+                        style: TextStyle(fontSize: 25, color: Colors.black, fontWeight: FontWeight.bold),
+                        children: [
+                          TextSpan(text: 'Home Page'),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(50, 30, 50, 20),
+                      child: Image.asset(
+                        'assets/images/lpu-app-home.png',
+                        width: double.infinity,
+                        height: 400,
+                      ),
+                    ),
+                    RichText(
+                      text: const TextSpan(
+                        style: TextStyle(fontSize: 15, color: Colors.black),
+                        children: [
+                          TextSpan(
+                            text: 'This is the home page of the mobile app. In this section, the user can access '
+                                'the MyLPU Classroom, Aims portal, contact information, and payment procedures by tapping on '
+                                'their respective buttons.',
+                          ),
+                        ],
+                      ),
+                      softWrap: true,
+                      textAlign: TextAlign.justify,
+                    ),
+                    const SizedBox(height: 20),
+                    RichText(
+                      text: const TextSpan(
+                        style: TextStyle(fontSize: 25, color: Colors.black, fontWeight: FontWeight.bold),
+                        children: [
+                          TextSpan(text: 'Academic Calendar'),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(50, 30, 50, 20),
+                      child: Image.asset(
+                        'assets/images/lpu-app-calendar.png',
+                        width: double.infinity,
+                        height: 400,
+                      ),
+                    ),
+                    RichText(
+                      text: const TextSpan(
+                        style: TextStyle(fontSize: 15, color: Colors.black),
+                        children: [
+                          TextSpan(
+                            text: 'The user must tap the calendar icon in the bottom navigation bar '
+                                'in order to view the \'Academic Calendar\'.',
+                          ),
+                        ],
+                      ),
+                      softWrap: true,
+                      textAlign: TextAlign.justify,
+                    ),
+                    const SizedBox(height: 20),
+                    RichText(
+                      text: const TextSpan(
+                        style: TextStyle(fontSize: 25, color: Colors.black, fontWeight: FontWeight.bold),
+                        children: [
+                          TextSpan(text: 'To-Do List'),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(50, 30, 50, 20),
+                      child: Image.asset(
+                        'assets/images/lpu-app-sample.png',
+                        width: double.infinity,
+                        height: 400,
+                      ),
+                    ),
+                    RichText(
+                      text: const TextSpan(
+                        style: TextStyle(fontSize: 15, color: Colors.black),
+                        children: [
+                          TextSpan(
+                            text: 'In the To-Do-List section, the user can add a task by tapping the button. '
+                                'Every task that is created has a color that denotes the task\'s due date. If the due date '
+                                'of a particular task is greater than two days, the app will set the color of the task to green. '
+                                'If the due date is equal to one or two days, the task color will be set to yellow. Lastly, '
+                                'if the task is due, the color of the task will be set to red. If the task is marked completed, '
+                                'the system will remove the task from the list then display it under the task completed list.',
+                          ),
+                        ],
+                      ),
+                      softWrap: true,
+                      textAlign: TextAlign.justify,
+                    ),
+                    const SizedBox(height: 20),
+                    RichText(
+                      text: const TextSpan(
+                        style: TextStyle(fontSize: 25, color: Colors.black, fontWeight: FontWeight.bold),
+                        children: [
+                          TextSpan(text: 'News and Events'),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(50, 30, 50, 20),
+                      child: Image.asset(
+                        'assets/images/lpu-app-news.png',
+                        width: double.infinity,
+                        height: 400,
+                      ),
+                    ),
+                    RichText(
+                      text: const TextSpan(
+                        style: TextStyle(fontSize: 15, color: Colors.black),
+                        children: [
+                          TextSpan(
+                            text: 'By tapping the icon button on the bottom navigation, the user can access the \'News and Events\' sections. '
+                                'Each article posted will depend on the user\'s departmental affiliation.',
+                          ),
+                        ],
+                      ),
+                      softWrap: true,
+                      textAlign: TextAlign.justify,
+                    ),
+                    const SizedBox(height: 20),
+                    RichText(
+                      text: const TextSpan(
+                        style: TextStyle(fontSize: 25, color: Colors.black, fontWeight: FontWeight.bold),
+                        children: [
+                          TextSpan(text: 'Notifications'),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(50, 30, 50, 20),
+                      child: Image.asset(
+                        'assets/images/lpu-app-notif.png',
+                        width: double.infinity,
+                        height: 400,
+                      ),
+                    ),
+                    RichText(
+                      text: const TextSpan(
+                        style: TextStyle(fontSize: 15, color: Colors.black),
+                        children: [
+                          TextSpan(
+                            text: 'The user can see all the notifications from the \'News and Events\' and \'To-Do List\' by tapping its icon button. '
+                                'Tapping the \'Clear All\' button will remove all the notifications displayed.',
+                          ),
+                        ],
+                      ),
+                      softWrap: true,
+                      textAlign: TextAlign.justify,
+                    ),
+                    const SizedBox(height: 20),
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
                             RichText(
-                              text: TextSpan(
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                              text: const TextSpan(
+                                style: TextStyle(fontSize: 15, color: Colors.black, fontWeight: FontWeight.bold),
                                 children: [
-                                  TextSpan(
-                                    text: 'To know more about LAYAG, please',
-                                  ),
+                                  TextSpan(text: 'To know more about LPU-App, please'),
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 10), // Add spacing here
                             TextButton(
                               child: const Text(
                                 'click here',
@@ -170,18 +243,14 @@ class HelpState extends State<Help> {
                               ),
                               onPressed: () {
                                 URL.launch(
-                                  'https://drive.google.com/file/d/1mTH-5GG_Zf8QohVUrwwOROdHiArxTmZz/view?usp=sharing');
+                                    'https://drive.google.com/file/d/1mTH-5GG_Zf8QohVUrwwOROdHiArxTmZz/view?usp=sharing');
                               },
                             ),
                           ],
                         ),
                         RichText(
-                          text: TextSpan(
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          text: const TextSpan(
+                            style: TextStyle(fontSize: 15, color: Colors.black, fontWeight: FontWeight.bold),
                             children: [
                               TextSpan(text: 'for more information.'),
                             ],
@@ -189,14 +258,12 @@ class HelpState extends State<Help> {
                         ),
                       ],
                     ),
-                  ),
+                  ],
                 ),
               ],
-            );
-          } else {
-            return Text('No data available');
-          }
-        },
+            ),
+          ),
+        ),
       ),
     );
   }
