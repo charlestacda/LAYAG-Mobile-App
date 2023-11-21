@@ -53,7 +53,7 @@ class LoginState extends State<Login> {
               height: double.infinity,
               width: double.infinity,
               decoration: const BoxDecoration(
-                  color: Color(0xFF8C0001)
+                  color: Color(0xFFFFFFFF)
                ),
               child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(
