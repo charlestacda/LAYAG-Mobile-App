@@ -76,16 +76,22 @@ class HomeState extends State<Home> {
   DateTime lastCacheRefresh = DateTime(0);
 
   @override
-  void initState() {
-    super.initState();
-    randomNumber = random.nextInt(8);
-    fetchTips();
+void initState() {
+  super.initState();
+  randomNumber = random.nextInt(8);
+  fetchTips();
 
-    // Check if portals are already cached and cache is expired
-    if (cachedPortals.isEmpty || DateTime.now().difference(lastCacheRefresh).inMinutes > 30) {
-      fetchPortals(); // Fetch portals if they are not cached or cache is expired (e.g., after 30 minutes)
-    }
+  // Check if portals are already cached and cache is expired
+  if (cachedPortals.isEmpty || DateTime.now().difference(lastCacheRefresh).inMinutes > 30) {
+    fetchPortals(); // Fetch portals if they are not cached or cache is expired (e.g., after 30 minutes)
+  } else {
+    // Portals are already cached, so you can set them to the 'portals' variable
+    setState(() {
+      portals = cachedPortals;
+    });
   }
+}
+
 
 
   Future<void> fetchTips() async {
