@@ -59,6 +59,7 @@ dependencies:
   webview_flutter: ^3.0.4
   percent_indicator: ^4.2.3
   curved_navigation_bar: ^1.0.3
+  cloud_firestore: ^4.13.2
 
 dev_dependencies:
   flutter_test:

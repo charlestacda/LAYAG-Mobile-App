@@ -26,6 +26,7 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: AppConfig.appDebugMode,
         home: const Login(),
         theme: ThemeData(
+            useMaterial3: false,
             fontFamily: 'Arial',
             colorScheme: ColorScheme.fromSwatch().copyWith(
               primary: AppConfig.appSecondaryTheme,

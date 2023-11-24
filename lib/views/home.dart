@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'dart:math';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:lpu_app/config/app_config.dart';
 import 'package:lpu_app/config/list_config.dart';
@@ -11,50 +14,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lpu_app/views/borrow_return.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:lpu_app/models/portal_model.dart';
+import 'package:lpu_app/models/tip_model.dart';
 
-
-class Portal {
-  final int id;
-  final String title;
-  final String link;
-  final String color;
-  final String img;
-
-  Portal({
-    required this.id,
-    required this.title,
-    required this.link,
-    required this.color,
-    required this.img,
-  });
-
-  factory Portal.fromJson(Map<String, dynamic> json) {
-    return Portal(
-      id: json['id'],
-      title: json['title'],
-      link: json['link'],
-      color: json['color'],
-      img: json['img'],
-    );
-  }
-}
-
-class Tip {
-  final int id;
-  final String content;
-
-  Tip({
-    required this.id,
-    required this.content,
-  });
-
-  factory Tip.fromJson(Map<String, dynamic> json) {
-    return Tip(
-      id: json['id'],
-      content: json['content'],
-    );
-  }
-}
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 
 class Home extends StatefulWidget {
@@ -68,51 +32,67 @@ class HomeState extends State<Home> {
   bool isPopedUp = false;
   Random random = Random();
   int randomNumber = 0;
-  List<Portal> portals = [];
   List<String> fetchedTips = [];
   String randomTip = '';
-
-  List<Portal> cachedPortals = [];
+  late FirebaseFirestore db;
+  late List<Portal> portals = [];
+  StreamSubscription<QuerySnapshot>? portalsSubscription;
   DateTime lastCacheRefresh = DateTime(0);
+  late String userType = '';
 
   @override
   void initState() {
     super.initState();
     randomNumber = random.nextInt(8);
     fetchTips();
+    fetchUserType(); 
+  }
 
-    // Check if portals are already cached and cache is expired
-    if (cachedPortals.isEmpty || DateTime.now().difference(lastCacheRefresh).inMinutes > 30) {
-      fetchPortals(); // Fetch portals if they are not cached or cache is expired (e.g., after 30 minutes)
+  Future<void> fetchUserType() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      final userReference = FirebaseDatabase.instance.ref().child('Accounts').child(user.uid);
+      DataSnapshot snapshot = await userReference.get();
+
+      // Extract userType from snapshot and update the state
+      final userData = snapshot.value as Map<dynamic, dynamic>;
+      final String fetchedUserType = userData['userType'] ?? ''; // Extract userType
+
+      setState(() {
+        userType = fetchedUserType; // Update userType
+      });
     }
+    fetchPortals(userType);
   }
 
 
   Future<void> fetchTips() async {
   try {
-    final response = await http.get(
-      Uri.parse('http://charlestacda-layag_cms.mdbgo.io/tips_view.php'),
-    );
+    final QuerySnapshot<Map<String, dynamic>> snapshot =
+        await FirebaseFirestore.instance.collection('tips').get();
 
-    if (response.statusCode == 200) {
-      List<dynamic> tipList = json.decode(response.body);
-      List<String> fetchedTipsList =
-          tipList.map((json) => json['content'].toString()).toList();
+    if (snapshot.docs.isNotEmpty) {
+      final List<QueryDocumentSnapshot<Map<String, dynamic>>> documents =
+          snapshot.docs.toList();
+
+      List<String> fetchedTipsList = documents
+          .map((doc) => Tip.fromFirestore(doc).content)
+          .toList();
+
       setState(() {
-        fetchedTips = fetchedTipsList; // Populate the fetchedTips list
+        fetchedTips = fetchedTipsList;
 
         if (fetchedTips.isNotEmpty) {
-          // Generate a random number within the valid range
           int randomIndex = random.nextInt(fetchedTips.length);
-          // Access the random tip
-          randomTip = fetchedTips[randomIndex]; // Set the randomTip variable
-          
+          randomTip = fetchedTips[randomIndex];
+
           // Call checkAndShowDialog here, as data has been fetched successfully
           checkAndShowDialog();
         }
       });
     } else {
-      print('Failed to load tips: ${response.statusCode}');
+      print('No tips available in the collection.');
     }
   } catch (e) {
     print('Error fetching tips: $e');
@@ -120,8 +100,55 @@ class HomeState extends State<Home> {
 }
 
 
+Future<void> fetchPortals(String userType) async {
+  try {
+    portalsSubscription = FirebaseFirestore.instance.collection('portals')
+      .where('archived', isEqualTo: false)
+      .orderBy('dateAdded')
+      .snapshots()
+      .listen((querySnapshot) {
+        List<Portal> fetchedPortals = [];
+
+        for (final doc in querySnapshot.docs) {
+          bool visibleToUser = false;
+          if (userType == 'Student') {
+            visibleToUser = doc['visibleToStudents'];
+          } else if (userType == 'Faculty') {
+            visibleToUser = doc['visibleToEmployees'];
+          }
+
+          if (visibleToUser) {
+            fetchedPortals.add(Portal(
+              id: doc.id,
+              title: doc['title'],
+              link: doc['link'],
+              color: doc['color'],
+              imageUrl: doc['imageUrl'], // Use the retrieved image URL
+              dateAdded: (doc['dateAdded'] as Timestamp).toDate(),
+              dateEdited: (doc['dateEdited'] as Timestamp).toDate(),
+              visibleToEmployees: doc['visibleToEmployees'],
+              visibleToStudents: doc['visibleToStudents'],
+              archived: doc['archived'],
+            ));
+          }
+        }
+
+        setState(() {
+          portals = fetchedPortals;
+        });
+      });
+  } catch (e) {
+    print('Error fetching portals: $e');
+  }
+}
 
 
+
+@override
+void dispose() {
+  portalsSubscription?.cancel();
+  super.dispose();
+}
 
 void checkAndShowDialog() async {
     // Get the shared preferences instance
@@ -159,36 +186,6 @@ void checkAndShowDialog() async {
       prefs.setBool('dialogShown', true);
     }
   }
-
-
-
-
-  Future<void> fetchPortals() async {
-    try {
-      final response = await http.get(
-        Uri.parse('http://charlestacda-layag_cms.mdbgo.io/portals_view.php'),
-      );
-
-      if (response.statusCode == 200) {
-        List<dynamic> portalList = json.decode(response.body);
-
-        List<Portal> fetchedPortals =
-            portalList.map((json) => Portal.fromJson(json)).toList();
-
-        setState(() {
-          portals = fetchedPortals;
-          cachedPortals = fetchedPortals; // Cache the fetched portals
-          lastCacheRefresh = DateTime.now(); // Update the cache refresh timestamp
-        });
-      } else {
-        print('Failed to load portals: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error fetching portals: $e');
-    }
-  }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -252,17 +249,21 @@ void checkAndShowDialog() async {
                           color: cardColor,
                           borderRadius: BorderRadius.circular(8.0),
                         ),
+                        // Modify the code where you display the image in the UI
                         child: Center(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: <Widget>[
                               Expanded(
-                                child: portal.img.isNotEmpty
-                                    ? Image.network(
-                                  'http://charlestacda-layag_cms.mdbgo.io/images/${portal.img}',
-                                  fit: BoxFit.contain,
-                                )
-                                    : SizedBox(), // Check if img is empty
+                                child: portal.imageUrl.isNotEmpty
+                                  ? Image.network(
+                                      portal.imageUrl,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (_, __, ___) {
+                                        return const Text('Image unavailable');
+                                      },
+                                    )
+                                  : const SizedBox(), // Check if img is empty
                               ),
                               const SizedBox(height: 16),
                               Text(

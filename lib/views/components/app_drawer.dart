@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:lpu_app/views/payment_procedures.dart';
 
+
 final getCurrentUser = FirebaseAuth.instance.currentUser!;
 final userID = getCurrentUser.uid;
 DatabaseReference? userReference;
