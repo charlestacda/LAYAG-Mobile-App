@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:lpu_app/main.dart';
 import 'package:lpu_app/views/handbook.dart';
 import 'package:lpu_app/views/components/app_drawer.dart';
 import 'package:lpu_app/views/help.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 
 class HandbookMenu extends StatefulWidget {
   const HandbookMenu({Key? key}) : super(key: key);
@@ -13,112 +16,139 @@ class HandbookMenu extends StatefulWidget {
 }
 
 class _HandbookMenuState extends State<HandbookMenu> {
-  // Define a global variable to store the fetched handbooks
-  static List<Map<String, dynamic>> cachedHandbooks = [];
-
-  List<Map<String, dynamic>> handbooks = [];
-
-  // Define a timestamp for the last cache refresh
-  DateTime lastCacheRefresh = DateTime(0);
-
-  Future<void> fetchHandbooks() async {
-    if (cachedHandbooks.isNotEmpty &&
-        DateTime.now().difference(lastCacheRefresh).inMinutes <= 30) {
-      // If handbooks are already cached and cache is not expired, use them
-      setState(() {
-        handbooks = cachedHandbooks;
-      });
-      return;
-    }
-
-    final response =
-        await http.get(Uri.parse('http://charlestacda-layag_cms.mdbgo.io/handbooks_view.php'));
-
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      setState(() {
-        handbooks = data.cast<Map<String, dynamic>>();
-        // Cache the fetched handbooks
-        cachedHandbooks = handbooks;
-        lastCacheRefresh = DateTime.now(); // Update the cache refresh timestamp
-      });
-    } else {
-      throw Exception('Failed to load handbooks');
-    }
-  }
+  late Stream<QuerySnapshot> handbookStream;
 
   @override
   void initState() {
     super.initState();
-    fetchHandbooks();
+    handbookStream =
+        FirebaseFirestore.instance.collection('handbooks').snapshots();
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      drawer: const AppDrawer(),
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: ClipOval(
-              child: Image.asset(
-                'assets/images/user.png',
-                width: 24,
-                height: 24,
+Widget build(BuildContext context) {
+  final userType = Provider.of<UserTypeProvider>(context, listen: false).userType;
+
+  return Scaffold(
+    drawer: const AppDrawer(), // Retaining the drawer
+    appBar: AppBar(
+      automaticallyImplyLeading: false,
+      leading: Builder(
+        builder: (context) => IconButton(
+          icon: ClipOval(
+            child: Image.asset(
+              'assets/images/user.png',
+              width: 24,
+              height: 24,
+            ),
+          ),
+          onPressed: () => Scaffold.of(context).openDrawer(),
+        ),
+      ),
+      title: Image.asset('assets/images/lpu_title.png'),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.help_outline),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const Help()),
+            );
+          },
+        ),
+      ],
+    ),
+    body: StreamBuilder<QuerySnapshot>(
+      stream: handbookStream,
+      builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        } else if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(child: Text('No handbooks available.'));
+        } else {
+          return SingleChildScrollView(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 32, 16, 64),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      child: Image.asset(
+                        'assets/images/handbook.png',
+                        width: double.infinity,
+                      ),
+                      padding: const EdgeInsets.fromLTRB(0, 0, 0, 15),
+                    ),
+                    SizedBox(height: 80),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: snapshot.data!.docs
+                        .map((DocumentSnapshot document) {
+                          Map<String, dynamic> data = document.data() as Map<String, dynamic>;
+
+                          final bool isVisibleToStudents = data['visibleToStudents'];
+                          final bool isVisibleToEmployees = data['visibleToEmployees'];
+                          final bool isArchived = data['archived'];
+
+                          // Check visibility based on userType
+                          if ((userType == 'Student' && isVisibleToStudents && !isArchived) ||
+                              (userType == 'Faculty' && isVisibleToEmployees && !isArchived) ||
+                              userType == 'Admin') {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (context) => Handbook(
+                                              id: document.id,
+                                              title: data['title'],
+                                              content: data['content'],
+                                              dateAdded: data['dateAdded'].toDate(),
+                                              dateEdited: data['dateEdited'].toDate(),
+                                              visibleToEmployees: data['visibleToEmployees'],
+                                              visibleToStudents: data['visibleToStudents'],
+                                              archived: data['archived'],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      child: Text(data['title']),
+                                      style: ElevatedButton.styleFrom(
+                                        primary: Color(0xFFA62D38),
+                                        textStyle: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 18, 
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          } else {
+                            return SizedBox.shrink(); // Invisible widget
+                          }
+                        }).toList(),
+                    ),
+                  ],
+                ),
               ),
             ),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
-        title: Image.asset('assets/images/lpu_title.png'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.help_outline),
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const Help()));
-            },
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 32, 16, 64),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Container(
-                  child: Image.asset(
-                    'assets/images/handbook.png',
-                    width: double.infinity,
-                  ),
-                  padding: const EdgeInsets.fromLTRB(0, 0, 0, 15),
-                ),
-                Center(
-                  child: Column(
-                    children: handbooks.map((handbook) {
-                      return ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => Handbook(
-                                handbookTitle: handbook['title'],
-                                handbookContent: handbook['content'],
-                              ),
-                            ),
-                          );
-                        },
-                        child: Text(handbook['title']),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+          );
+        }
+      },
+    ),
+  );
+}
+
 }

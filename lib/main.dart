@@ -3,8 +3,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:lpu_app/config/app_config.dart';
 import 'package:lpu_app/views/login.dart';
+import 'package:timezone/data/latest.dart' as tzdata;
+import 'package:timezone/timezone.dart' as tz;
+import 'package:provider/provider.dart';
 
-Future main() async {
+class UserTypeProvider with ChangeNotifier {
+  String userType = ''; // Initialize with an empty string
+
+  void setUserType(String type) {
+    userType = type;
+    notifyListeners(); // Notify listeners about the change
+  }
+}
+
+Future<void> main() async {
+  tzdata.initializeTimeZones();
+  tz.setLocalLocation(tz.getLocation('Asia/Manila')); 
+  
   FlutterNativeSplash.preserve(widgetsBinding: WidgetsFlutterBinding.ensureInitialized());
 
   await Future.delayed(const Duration(seconds: AppConfig.appSplashScreenDuration));
@@ -13,7 +28,12 @@ Future main() async {
 
   FlutterNativeSplash.remove();
   
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider<UserTypeProvider>(
+      create: (context) => UserTypeProvider(), // Provide an instance of UserTypeProvider
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -22,14 +42,16 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        title: AppConfig.appName,
-        debugShowCheckedModeBanner: AppConfig.appDebugMode,
-        home: const Login(),
-        theme: ThemeData(
-            useMaterial3: false,
-            fontFamily: 'Arial',
-            colorScheme: ColorScheme.fromSwatch().copyWith(
-              primary: AppConfig.appSecondaryTheme,
-            )));
+      title: AppConfig.appName,
+      debugShowCheckedModeBanner: AppConfig.appDebugMode,
+      home: const Login(),
+      theme: ThemeData(
+        useMaterial3: false,
+        fontFamily: 'Arial',
+        colorScheme: ColorScheme.fromSwatch().copyWith(
+          primary: AppConfig.appSecondaryTheme,
+        ),
+      ),
+    );
   }
 }

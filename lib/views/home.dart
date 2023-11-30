@@ -5,11 +5,13 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:lpu_app/config/app_config.dart';
 import 'package:lpu_app/config/list_config.dart';
+import 'package:lpu_app/main.dart';
 import 'package:lpu_app/utilities/url.dart';
 import 'package:lpu_app/views/components/app_drawer.dart';
 import 'package:lpu_app/views/contact_info.dart';
 import 'package:lpu_app/views/help.dart';
 import 'package:lpu_app/views/payment_procedures.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lpu_app/views/borrow_return.dart';
 import 'dart:convert';
@@ -38,61 +40,81 @@ class HomeState extends State<Home> {
   late List<Portal> portals = [];
   StreamSubscription<QuerySnapshot>? portalsSubscription;
   DateTime lastCacheRefresh = DateTime(0);
-  late String userType = '';
 
   @override
   void initState() {
     super.initState();
     randomNumber = random.nextInt(8);
-    fetchTips();
+
     fetchUserType(); 
   }
 
   Future<void> fetchUserType() async {
-    final user = FirebaseAuth.instance.currentUser;
+  final user = FirebaseAuth.instance.currentUser;
 
-    if (user != null) {
-      final userReference = FirebaseDatabase.instance.ref().child('Accounts').child(user.uid);
-      DataSnapshot snapshot = await userReference.get();
+  if (user != null) {
+    final userReference =
+        FirebaseDatabase.instance.ref().child('Accounts').child(user.uid);
+    DataSnapshot snapshot = await userReference.get();
 
-      // Extract userType from snapshot and update the state
-      final userData = snapshot.value as Map<dynamic, dynamic>;
-      final String fetchedUserType = userData['userType'] ?? ''; // Extract userType
+    final userData = snapshot.value as Map<dynamic, dynamic>;
+    final String fetchedUserType = userData['userType'] ?? '';
 
-      setState(() {
-        userType = fetchedUserType; // Update userType
-      });
-    }
-    fetchPortals(userType);
+    Provider.of<UserTypeProvider>(context, listen: false)
+        .setUserType(fetchedUserType);
+
+    fetchTips(fetchedUserType);
+    fetchPortals(fetchedUserType);
   }
+}
 
 
-  Future<void> fetchTips() async {
+Future<void> fetchTips(String userType) async {
   try {
-    final QuerySnapshot<Map<String, dynamic>> snapshot =
-        await FirebaseFirestore.instance.collection('tips').get();
-
-    if (snapshot.docs.isNotEmpty) {
-      final List<QueryDocumentSnapshot<Map<String, dynamic>>> documents =
-          snapshot.docs.toList();
-
-      List<String> fetchedTipsList = documents
-          .map((doc) => Tip.fromFirestore(doc).content)
-          .toList();
-
+    if (userType == 'Admin') {
       setState(() {
-        fetchedTips = fetchedTipsList;
-
-        if (fetchedTips.isNotEmpty) {
-          int randomIndex = random.nextInt(fetchedTips.length);
-          randomTip = fetchedTips[randomIndex];
-
-          // Call checkAndShowDialog here, as data has been fetched successfully
-          checkAndShowDialog();
-        }
+        randomTip = 'Welcome Admin!';
+        checkAndShowDialog();
       });
     } else {
-      print('No tips available in the collection.');
+      final QuerySnapshot<Map<String, dynamic>> snapshot =
+          await FirebaseFirestore.instance.collection('tips').get();
+
+      if (snapshot.docs.isNotEmpty) {
+        final List<QueryDocumentSnapshot<Map<String, dynamic>>> documents =
+            snapshot.docs.toList();
+
+        List<String> fetchedTipsList = documents
+            .where((doc) {
+              final bool visibleToStudents = doc['visibleToStudents'] ?? false;
+              final bool visibleToEmployees = doc['visibleToEmployees'] ?? false;
+              final bool archived = doc['archived'] ?? false;
+
+              if (userType == 'Student') {
+                return visibleToStudents && !archived;
+              } else if (userType == 'Faculty') {
+                return visibleToEmployees && !archived;
+              }
+
+              return false;
+            })
+            .map((doc) => Tip.fromFirestore(doc).content)
+            .toList();
+
+        setState(() {
+          fetchedTips = fetchedTipsList;
+
+          if (fetchedTips.isNotEmpty) {
+            int randomIndex = random.nextInt(fetchedTips.length);
+            randomTip = fetchedTips[randomIndex];
+
+            // Call checkAndShowDialog here, as data has been fetched successfully
+            checkAndShowDialog();
+          }
+        });
+      } else {
+        print('No tips available in the collection.');
+      }
     }
   } catch (e) {
     print('Error fetching tips: $e');
@@ -103,40 +125,43 @@ class HomeState extends State<Home> {
 Future<void> fetchPortals(String userType) async {
   try {
     portalsSubscription = FirebaseFirestore.instance.collection('portals')
-      .where('archived', isEqualTo: false)
-      .orderBy('dateAdded')
-      .snapshots()
-      .listen((querySnapshot) {
-        List<Portal> fetchedPortals = [];
+        .orderBy('dateAdded')
+        .snapshots()
+        .listen((querySnapshot) {
+      List<Portal> fetchedPortals = [];
 
-        for (final doc in querySnapshot.docs) {
-          bool visibleToUser = false;
-          if (userType == 'Student') {
-            visibleToUser = doc['visibleToStudents'];
-          } else if (userType == 'Faculty') {
-            visibleToUser = doc['visibleToEmployees'];
-          }
+      for (final doc in querySnapshot.docs) {
+        bool visibleToUser = false;
+        bool archived = doc['archived'];
 
-          if (visibleToUser) {
-            fetchedPortals.add(Portal(
-              id: doc.id,
-              title: doc['title'],
-              link: doc['link'],
-              color: doc['color'],
-              imageUrl: doc['imageUrl'], // Use the retrieved image URL
-              dateAdded: (doc['dateAdded'] as Timestamp).toDate(),
-              dateEdited: (doc['dateEdited'] as Timestamp).toDate(),
-              visibleToEmployees: doc['visibleToEmployees'],
-              visibleToStudents: doc['visibleToStudents'],
-              archived: doc['archived'],
-            ));
-          }
+        if (userType == 'Student') {
+          visibleToUser = !archived && doc['visibleToStudents'];
+        } else if (userType == 'Faculty') {
+          visibleToUser = !archived && doc['visibleToEmployees'];
+        } else if (userType == 'Admin') {
+          visibleToUser = true; // Admin has access to all portals
         }
 
-        setState(() {
-          portals = fetchedPortals;
-        });
+        if (visibleToUser) {
+          fetchedPortals.add(Portal(
+            id: doc.id,
+            title: doc['title'],
+            link: doc['link'],
+            color: doc['color'],
+            imageUrl: doc['imageUrl'],
+            dateAdded: (doc['dateAdded'] as Timestamp).toDate(),
+            dateEdited: (doc['dateEdited'] as Timestamp).toDate(),
+            visibleToEmployees: doc['visibleToEmployees'],
+            visibleToStudents: doc['visibleToStudents'],
+            archived: archived,
+          ));
+        }
+      }
+
+      setState(() {
+        portals = fetchedPortals;
       });
+    });
   } catch (e) {
     print('Error fetching portals: $e');
   }

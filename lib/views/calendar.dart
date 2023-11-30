@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import '../utils.dart';
 import 'package:lpu_app/views/help.dart';
 import 'package:lpu_app/views/components/app_drawer.dart';
+import 'package:lpu_app/views/home.dart';
 
 class Calendar extends StatefulWidget {
   const Calendar({Key? key}) : super(key: key);
@@ -13,30 +16,42 @@ class Calendar extends StatefulWidget {
 }
 
 class _CalendarState extends State<Calendar> {
-  late final ValueNotifier<List<Event>> _selectedEvents;
+  late final ValueNotifier<List<Event>> _selectedEvents = ValueNotifier([]);
   CalendarFormat _calendarFormat = CalendarFormat.month;
   RangeSelectionMode _rangeSelectionMode = RangeSelectionMode.toggledOff;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   DateTime? _rangeStart;
   DateTime? _rangeEnd;
+  StreamSubscription<Map<DateTime, List<Event>>>? _eventsSubscription;
+  
 
   @override
   void initState() {
     super.initState();
 
     _selectedDay = _focusedDay;
-    _selectedEvents = ValueNotifier([]);
 
-    loadEvents().then((events) {
-      _selectedEvents.value = _getEventsForDay(_selectedDay!);
-    });
+    loadEventsRealtime(); // Start listening to real-time updates
+
+    _selectedEvents.value = _getEventsForDay(_selectedDay!);
   }
 
   @override
   void dispose() {
     _selectedEvents.dispose();
+    _eventsSubscription?.cancel(); // Cancel the subscription if it exists
     super.dispose();
+  }
+
+  void loadEventsRealtime() {
+    _eventsSubscription = fetchEventsRealtime(context).listen((eventsMap) {
+      setState(() {
+        kEvents.clear();
+        kEvents.addAll(eventsMap);
+        _selectedEvents.value = _getEventsForDay(_selectedDay!); // Update selected events
+      });
+    });
   }
 
   String _formatTime(String dateTimeString) {
@@ -46,34 +61,42 @@ class _CalendarState extends State<Calendar> {
   }
 
   void _showEventDetails(Event event) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Event Details'),
-          content: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Title: ${event.title}'),
-              Text('Description: ${event.description}'),
-              Text('Start Time: ${_formatTime(event.startDatetime)}'),
-              Text('End Time: ${_formatTime(event.endDatetime)}'),
-              Text('Location: ${event.location}'),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Close'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
+  final startTimeLocal = event.startDateTime.toLocal(); // Convert UTC to local time
+  final endTimeLocal = event.endDateTime.toLocal(); // Convert UTC to local time
+
+  final formattedStartTime = DateFormat('h:mm a').format(startTimeLocal);
+  final formattedEndTime = DateFormat('h:mm a').format(endTimeLocal);
+
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text('Event Details'),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Title: ${event.title}'),
+            Text('Description: ${event.description}'),
+            Text('Start Time: $formattedStartTime'),
+            Text('End Time: $formattedEndTime'),
+            Text('Location: ${event.location}'),
           ],
-        );
-      },
-    );
-  }
+        ),
+        actions: <Widget>[
+          TextButton(
+            child: Text('Close'),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
 
   List<Event> _getEventsForDay(DateTime day) {
     return kEvents[day] ?? [];
@@ -149,15 +172,17 @@ Widget build(BuildContext context) => Scaffold(
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Container(
-            alignment: Alignment.center,
-            child: Image.asset(
-              'assets/images/school_calendar_header.png',
-              width: double.infinity,
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              alignment: Alignment.center,
+              child: Image.asset(
+                'assets/images/school_calendar_header.png',
+                width: double.infinity,
+              ),
             ),
-          ),
           TableCalendar<Event>(
             firstDay: kFirstDay,
             lastDay: kLastDay,
@@ -194,11 +219,12 @@ Widget build(BuildContext context) => Scaffold(
             },
           ),
           const SizedBox(height: 8.0),
-          Expanded(
-            child: ValueListenableBuilder<List<Event>>(
+            ValueListenableBuilder<List<Event>>(
               valueListenable: _selectedEvents,
               builder: (context, value, _) {
                 return ListView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
                   itemCount: value.length,
                   itemBuilder: (context, index) {
                     final event = value[index];
@@ -214,17 +240,13 @@ Widget build(BuildContext context) => Scaffold(
                           borderRadius: BorderRadius.circular(12.0),
                         ),
                         child: ListTile(
-                          title: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                '${event.title}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                          title: Text(
+                            '${event.title}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                               ),
-                            ],
-                          ),
                         ),
                       ),
                     );
@@ -232,8 +254,9 @@ Widget build(BuildContext context) => Scaffold(
                 );
               },
             ),
-          ),
-        ],
+            SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+          ],
+        ),
       ),
     );
 
