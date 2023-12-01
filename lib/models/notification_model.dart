@@ -1,4 +1,4 @@
-class NotificationModel {
+  class NotificationModel {
   String notifTitle, notifName;
 
   NotificationModel({required this.notifTitle, required this.notifName});
