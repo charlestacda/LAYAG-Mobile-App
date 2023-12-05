@@ -176,12 +176,15 @@ Widget build(BuildContext context) => Scaffold(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 32, 16, 64),
+              child: Container(
               alignment: Alignment.center,
               child: Image.asset(
                 'assets/images/school_calendar_header.png',
                 width: double.infinity,
               ),
+            ),
             ),
           TableCalendar<Event>(
             firstDay: kFirstDay,

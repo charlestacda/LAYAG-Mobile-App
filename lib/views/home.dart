@@ -46,16 +46,20 @@ class HomeState extends State<Home> {
     super.initState();
     randomNumber = random.nextInt(8);
 
-    fetchUserType(); 
+    fetchUserType(context);
   }
 
-  Future<void> fetchUserType() async {
+  Future<void> fetchUserType(BuildContext context) async {
+  if (!mounted) return; // Check if the widget is still active
+
   final user = FirebaseAuth.instance.currentUser;
 
   if (user != null) {
     final userReference =
         FirebaseDatabase.instance.ref().child('Accounts').child(user.uid);
     DataSnapshot snapshot = await userReference.get();
+
+    if (!mounted) return; // Check again if the widget is still active
 
     final userData = snapshot.value as Map<dynamic, dynamic>;
     final String fetchedUserType = userData['userType'] ?? '';
@@ -67,6 +71,7 @@ class HomeState extends State<Home> {
     fetchPortals(fetchedUserType);
   }
 }
+
 
 
 Future<void> fetchTips(String userType) async {

@@ -75,17 +75,16 @@ class ToDoState extends State<ToDo> {
   }
 
   Future<UserModel?> getUserDetails(String userId) async {
-  FirebaseFirestore firestore = FirebaseFirestore.instance;
-  DocumentSnapshot<Map<String, dynamic>> snapshot =
-      await firestore.collection('users').doc(userId).get();
+    FirebaseFirestore firestore = FirebaseFirestore.instance;
+    DocumentSnapshot<Map<String, dynamic>> snapshot =
+        await firestore.collection('users').doc(userId).get();
 
-  if (snapshot.exists) {
-    return UserModel.fromMap(snapshot.data()!);
-  } else {
-    return null;
+    if (snapshot.exists) {
+      return UserModel.fromMap(snapshot.data()!);
+    } else {
+      return null;
+    }
   }
-}
-  
 
   DateTime getDateTimeFromString(String dateString) {
     DateFormat format = DateFormat('yyyy-MM-dd h:mm a');
@@ -105,6 +104,89 @@ class ToDoState extends State<ToDo> {
       return Colors.yellow; // One or two days
     } else {
       return AppConfig.appSecondaryTheme; // Due or less than a day
+    }
+  }
+
+  void updateFirestoreForCompletion(
+    TaskModel completedTask,
+    CompleteTaskModel convertedCompletedTask,
+  ) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('completed_list')
+          .doc(userID)
+          .set({
+        convertedCompletedTask.TodoTask: {
+          'TodoTask': convertedCompletedTask.TodoTask,
+          'CreatedDate': convertedCompletedTask.CreatedDate,
+          'DeadlineDate': convertedCompletedTask.DeadlineDate,
+          'TodoStatus': 'Completed',
+        }
+      }, SetOptions(merge: true));
+
+      await FirebaseFirestore.instance
+          .collection('todo_list')
+          .doc(userID)
+          .update({
+        completedTask.todoTask: FieldValue.delete(),
+      });
+    } catch (e) {
+      print('Error updating Firestore: $e');
+      // Handle error as needed
+    }
+  }
+
+  void updateFirestoreForIncompletion(
+    CompleteTaskModel incompleteTask,
+    TaskModel convertedIncompleteTask,
+  ) async {
+    try {
+      await FirebaseFirestore.instance.collection('todo_list').doc(userID).set({
+        convertedIncompleteTask.todoTask: {
+          'todoTask': convertedIncompleteTask.todoTask,
+          'createdDate': convertedIncompleteTask.createdDate,
+          'deadlineDate': convertedIncompleteTask.deadlineDate,
+          'todoStatus': 'Pending',
+        }
+      }, SetOptions(merge: true));
+
+      await FirebaseFirestore.instance
+          .collection('completed_list')
+          .doc(userID)
+          .update({
+        incompleteTask.TodoTask: FieldValue.delete(),
+      });
+    } catch (e) {
+      print('Error updating Firestore: $e');
+      // Handle error as needed
+    }
+  }
+
+  void removeCompletedTask(int index) async {
+    try {
+      // Store the information that needs to be deleted
+      final taskToRemove = completedList[index];
+
+      // Remove the card immediately from the UI
+      setState(() {
+        completedList.removeAt(index);
+      });
+
+      // Delete the stored information from the `completed_list` collection in Firestore
+      await firestore.collection('completed_list').doc(userID).update({
+        taskToRemove.TodoTask: FieldValue.delete(),
+      }).then((_) {
+        // Successfully deleted from Firestore
+      }).catchError((error) {
+        // Handle error while deleting from Firestore
+        setState(() {
+          // Add the task back to the list if deletion from Firestore fails
+          completedList.insert(index, taskToRemove);
+        });
+        Fluttertoast.showToast(msg: 'Failed to remove task');
+      });
+    } catch (e) {
+      print('Error removing task: $e');
     }
   }
 
@@ -292,63 +374,40 @@ class ToDoState extends State<ToDo> {
                   itemBuilder: (context, index) {
                     Color taskColor =
                         _getTaskColor(todoList[index].deadlineDate);
-                    return Dismissible(
-                      key: ValueKey<TaskModel>(todoList[index]),
-                      child: Card(
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4)),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.fromLTRB(0, 0, 8, 0),
-                          title: Text(todoList[index].todoTask),
-                          subtitle: Text(todoList[index].deadlineDate),
-                          leading: IconButton(
-                            icon: const Icon(Icons.check_box_outline_blank),
-                            color: const Color(0xFF606060),
-                            onPressed: () async {
-                              await FirebaseFirestore.instance
-                                  .collection('completed_list')
-                                  .doc(userID)
-                                  .set({
-                                todoList[index].todoTask: {
-                                  'TodoTask': todoList[index].todoTask,
-                                  'CreatedDate': newForm.toString() +
-                                      ' ' +
-                                      CreateTimeNow.format(context).toString(),
-                                  'TargetDate': todoList[index].deadlineDate,
-                                  'TodoStatus': 'Completed',
-                                }
-                              }, SetOptions(merge: true));
+                    return Card(
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4)),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.fromLTRB(0, 0, 8, 0),
+                        title: Text(todoList[index].todoTask),
+                        subtitle: Text(todoList[index].deadlineDate),
+                        leading: IconButton(
+                          icon: const Icon(Icons.check_box_outline_blank),
+                          color: const Color(0xFF606060),
+                          onPressed: () {
+                            setState(() {
+                              final completedTask = todoList.removeAt(index);
+                              final convertedCompletedTask = CompleteTaskModel(
+                                CreatedDate: completedTask.createdDate,
+                                DeadlineDate: completedTask.deadlineDate,
+                                TodoTask: completedTask.todoTask,
+                                TodoStatus: 'Completed',
+                              );
+                              completedList.add(convertedCompletedTask);
 
-                              completedList.add(CompleteTaskModel(
-                                  CreatedDate: newForm.toString() +
-                                      ' ' +
-                                      CreateTimeNow.format(context).toString(),
-                                  DeadlineDate:
-                                      todoList[index].deadlineDate.toString(),
-                                  TodoTask: todoList[index].todoTask,
-                                  TodoStatus: 'Completed'));
-
-                              await FirebaseFirestore.instance
-                                  .collection('todo_list')
-                                  .doc(userID)
-                                  .update({
-                                todoList[index].todoTask: FieldValue.delete(),
-                              });
-
-                              setState(() {
-                                todoList.removeAt(index);
-                              });
-                            },
+                              updateFirestoreForCompletion(
+                                  completedTask, convertedCompletedTask);
+                            });
+                          },
+                        ),
+                        trailing: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(4.0),
+                            color:
+                                taskColor, // Set the color based on the due date
                           ),
-                          trailing: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(4.0),
-                              color:
-                                  taskColor, // Set the color based on the due date
-                            ),
-                            width: 35,
-                            height: 56,
-                          ),
+                          width: 35,
+                          height: 56,
                         ),
                       ),
                     );
@@ -375,85 +434,50 @@ class ToDoState extends State<ToDo> {
                     shrinkWrap: true,
                     itemCount: completedList.length,
                     itemBuilder: (BuildContext context, int index) {
-                      return Dismissible(
-                          key:
-                              ValueKey<CompleteTaskModel>(completedList[index]),
-                          child: Card(
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4.0)),
-                            child: ListTile(
-                              contentPadding:
-                                  const EdgeInsets.fromLTRB(0, 0, 0, 0),
-                              title: Text(
-                                completedList[index].TodoTask,
-                                style: const TextStyle(
-                                    color: Color(0xff606060),
-                                    decoration: TextDecoration.lineThrough),
-                              ),
-                              subtitle: Text(
-                                completedList[index].DeadlineDate,
-                                style: const TextStyle(
+                      return Card(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4.0)),
+                          child: ListTile(
+                            contentPadding:
+                                const EdgeInsets.fromLTRB(0, 0, 0, 0),
+                            title: Text(
+                              completedList[index].TodoTask,
+                              style: const TextStyle(
                                   color: Color(0xff606060),
-                                ),
+                                  decoration: TextDecoration.lineThrough),
+                            ),
+                            subtitle: Text(
+                              completedList[index].DeadlineDate,
+                              style: const TextStyle(
+                                color: Color(0xff606060),
                               ),
-                              leading: IconButton(
-                                icon: const Icon(Icons.check_box_outlined),
-                                color: const Color(0xff606060),
-                                onPressed: () async {
-                                  await FirebaseFirestore.instance
-                                      .collection('todo_list')
-                                      .doc(userID)
-                                      .set({
-                                    completedList[index].TodoTask: {
-                                      'todoTask': completedList[index].TodoTask,
-                                      'createdDate': newForm.toString() +
-                                          ' ' +
-                                          CreateTimeNow.format(context)
-                                              .toString(),
-                                      'targetDate':
-                                          completedList[index].DeadlineDate,
-                                      'todoStatus': 'Pending',
-                                    }
-                                  }, SetOptions(merge: true));
+                            ),
+                            leading: IconButton(
+                              icon: const Icon(Icons.check_box_outlined),
+                              color: const Color(0xff606060),
+                              onPressed: () {
+                                setState(() {
+                                  final incompleteTask =
+                                      completedList.removeAt(index);
+                                  final convertedIncompleteTask = TaskModel(
+                                    createdDate: incompleteTask.CreatedDate,
+                                    deadlineDate: incompleteTask.DeadlineDate,
+                                    todoTask: incompleteTask.TodoTask,
+                                    todoStatus: 'Pending',
+                                  );
+                                  todoList.add(convertedIncompleteTask);
 
-                                  todoList.add(TaskModel(
-                                      createdDate: newForm.toString() +
-                                          ' ' +
-                                          CreateTimeNow.format(context)
-                                              .toString(),
-                                      deadlineDate:
-                                          completedList[index].DeadlineDate,
-                                      todoTask: completedList[index].TodoTask,
-                                      todoStatus: 'Pending'));
-
-                                  await FirebaseFirestore.instance
-                                      .collection('completed_list')
-                                      .doc(userID)
-                                      .update({
-                                completedList[index].TodoTask: FieldValue.delete(),
-                              });
-
-                                  setState(() {
-                                    completedList.removeAt(index);
-                                  });
-                                },
-                              ),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.close),
-                                color: const Color(0xff606060),
-                                onPressed: () async {
-                                  await FirebaseFirestore.instance
-                                      .collection('completed_list')
-                                      .doc(userID)
-                                      .update({
-                                completedList[index].TodoTask: FieldValue.delete(),
-                              });
-
-                                  setState(() {
-                                    completedList.removeAt(index);
-                                  });
-                                },
-                              ),
+                                  updateFirestoreForIncompletion(
+                                      incompleteTask, convertedIncompleteTask);
+                                });
+                              },
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.close),
+                              color: const Color(0xff606060),
+                              onPressed: () {
+                                removeCompletedTask(index);
+                              },
                             ),
                           ));
                     }),
@@ -471,7 +495,7 @@ class ToDoState extends State<ToDo> {
             newForm.toString() + ' ' + CreateTimeNow.format(context).toString(),
         'targetDate': fDate.toString() + ' ' + fTime.toString(),
         'todoStatus': 'Pending',
-      } 
+      }
     }, SetOptions(merge: true)).asStream();
     await _notifreference.doc(ID).set({
       'Notifications': {
@@ -483,50 +507,59 @@ class ToDoState extends State<ToDo> {
     }, SetOptions(merge: true));
   }
 
-
   Future<void> getToDo() async {
-  final user = FirebaseAuth.instance.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
 
-  if (user != null) {
-    try {
-      final todoSnapshot = await FirebaseFirestore.instance.collection('todo_list').doc(user.uid).get();
-      final completedSnapshot = await FirebaseFirestore.instance.collection('completed_list').doc(user.uid).get();
+    if (user != null) {
+      try {
+        final todoSnapshot = await FirebaseFirestore.instance
+            .collection('todo_list')
+            .doc(user.uid)
+            .get();
+        final completedSnapshot = await FirebaseFirestore.instance
+            .collection('completed_list')
+            .doc(user.uid)
+            .get();
 
-      if (todoSnapshot.exists) {
-        final _tasksMap = Map<String, dynamic>.from(todoSnapshot.data() as Map<String, dynamic>);
-        final tasksList = _tasksMap.entries.map((entry) => TaskModel.fromMap(Map<String, dynamic>.from(entry.value))).toList();
+        if (todoSnapshot.exists) {
+          final _tasksMap = Map<String, dynamic>.from(
+              todoSnapshot.data() as Map<String, dynamic>);
+          final tasksList = _tasksMap.entries
+              .map((entry) =>
+                  TaskModel.fromMap(Map<String, dynamic>.from(entry.value)))
+              .toList();
 
-        setState(() {
-          todoList = tasksList; // Update todoList with fetched tasks
-        });
-      } else {
-        setState(() {
-          todoList = []; // If no tasks found, set todoList as an empty list
-        });
+          setState(() {
+            todoList = tasksList; // Update todoList with fetched tasks
+          });
+        } else {
+          setState(() {
+            todoList = []; // If no tasks found, set todoList as an empty list
+          });
+        }
+
+        if (completedSnapshot.exists) {
+          final cTasksMap = Map<String, dynamic>.from(
+              completedSnapshot.data() as Map<String, dynamic>);
+          final cTasksList = cTasksMap.entries
+              .map((entry) => CompleteTaskModel.fromMap(
+                  Map<String, dynamic>.from(entry.value)))
+              .toList();
+
+          setState(() {
+            completedList =
+                cTasksList; // Update completedList with fetched tasks
+          });
+        } else {
+          setState(() {
+            completedList =
+                []; // If no completed tasks found, set completedList as an empty list
+          });
+        }
+      } catch (e) {
+        print('Error fetching tasks: $e');
+        // Handle error as needed
       }
-
-      if (completedSnapshot.exists) {
-        final cTasksMap = Map<String, dynamic>.from(completedSnapshot.data() as Map<String, dynamic>);
-        final cTasksList = cTasksMap.entries.map((entry) => CompleteTaskModel.fromMap(Map<String, dynamic>.from(entry.value))).toList();
-
-        setState(() {
-          completedList = cTasksList; // Update completedList with fetched tasks
-        });
-      } else {
-        setState(() {
-          completedList = []; // If no completed tasks found, set completedList as an empty list
-        });
-      }
-    } catch (e) {
-      print('Error fetching tasks: $e');
-      // Handle error as needed
     }
   }
 }
-
-}
-
-
-
-
-

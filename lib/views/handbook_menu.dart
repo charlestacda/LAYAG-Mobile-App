@@ -58,30 +58,38 @@ Widget build(BuildContext context) {
         ),
       ],
     ),
-    body: StreamBuilder<QuerySnapshot>(
-      stream: handbookStream,
-      builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return Center(child: Text('No handbooks available.'));
-        } else {
-          return SingleChildScrollView(
+    body: SingleChildScrollView(
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 32, 16, 64), // Adjust the values as needed
+        child: Container(
+          alignment: Alignment.center,
+          child: Image.asset(
+            'assets/images/handbook.png',
+            width: double.infinity,
+            alignment: Alignment.center,
+          ),
+        ),
+      ),
+            StreamBuilder<QuerySnapshot>(
+              stream: handbookStream,
+              builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(child: Text('No handbooks available.'));
+                } else {
+                  return SingleChildScrollView(
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 32, 16, 64),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      child: Image.asset(
-                        'assets/images/handbook.png',
-                        width: double.infinity,
-                      ),
-                      padding: const EdgeInsets.fromLTRB(0, 0, 0, 15),
-                    ),
                     SizedBox(height: 80),
                     Column(
                       mainAxisSize: MainAxisSize.min,
@@ -145,10 +153,12 @@ Widget build(BuildContext context) {
               ),
             ),
           );
-        }
-      },
-    ),
-  );
-}
-
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
