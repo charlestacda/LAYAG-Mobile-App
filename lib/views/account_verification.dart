@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:lpu_app/views/components/Nav.dart';
+import 'package:lpu_app/views/login.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AccountVerification extends StatefulWidget {
   const AccountVerification({Key? key}) : super(key: key);
@@ -60,8 +62,25 @@ class AccountVerificationState extends State<AccountVerification> {
         ? const NewNavigation()
         : Scaffold(
             appBar: AppBar(
-              title: const Text('Email Verification'),
-            ),
+  title: const Text('Email Verification'),
+  leading: IconButton(
+    icon: Icon(Icons.arrow_back),
+    onPressed: () async {
+      // Perform the logout process
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      prefs.setBool('dialogShown', false);
+      await FirebaseAuth.instance.signOut();
+
+      // Navigate to the Login screen after successful logout
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const Login()),
+        (route) => false, // Remove all existing routes from the stack
+      );
+    },
+  ),
+),
+
             body: const Center(child: Text('Verification link sent on your email.')),
           );
   }

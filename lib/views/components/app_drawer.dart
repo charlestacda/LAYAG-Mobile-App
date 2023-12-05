@@ -1,5 +1,7 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:lpu_app/config/app_config.dart';
 import 'package:lpu_app/utilities/url.dart';
@@ -8,21 +10,14 @@ import 'package:lpu_app/views/login.dart';
 import 'package:lpu_app/views/help.dart';
 import 'package:lpu_app/views/contact_info.dart';
 import 'package:lpu_app/views/account_settings.dart';
+import 'package:lpu_app/views/todo.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:lpu_app/views/payment_procedures.dart';
 
 
-final getCurrentUser = FirebaseAuth.instance.currentUser!;
-final userID = getCurrentUser.uid;
-DatabaseReference? userReference;
-Future? userDetails;
 
-Future getUserDetails() async {
-  DataSnapshot snapshot = await userReference!.get();
-
-  return UserModel.fromMap(Map<dynamic, dynamic>.from(snapshot.value as Map<dynamic, dynamic>));
-}
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({Key? key}) : super(key: key);
@@ -32,6 +27,9 @@ class AppDrawer extends StatefulWidget {
 }
 
 class AppDrawerState extends State<AppDrawer> {
+  late Stream<UserModel?> userDetailsStream;
+  StreamSubscription? _subscription;
+
   @override
   void initState() {
     super.initState();
@@ -39,45 +37,90 @@ class AppDrawerState extends State<AppDrawer> {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user != null) {
-      userReference = FirebaseDatabase.instance.ref().child('Accounts').child(user.uid);
+      userDetailsStream = getUserDetails(user.uid);
+      _subscription = userDetailsStream.listen((data) {
+        if (mounted) {
+          setState(() {
+            // Update the state with the new data if needed
+          });
+        }
+      });
     }
-
-    userDetails = getUserDetails();
   }
+
+  @override
+  void dispose() {
+    _subscription?.cancel(); // Cancel the stream subscription
+    super.dispose();
+  }
+
+  Stream<UserModel?> getUserDetails(String userId) {
+  FirebaseFirestore firestore = FirebaseFirestore.instance;
+  return firestore
+      .collection('users')
+      .doc(userId)
+      .snapshots()
+      .map((DocumentSnapshot<Map<String, dynamic>> snapshot) {
+    if (snapshot.exists) {
+      return UserModel.fromMap(snapshot.data()!);
+    } else {
+      return null;
+    }
+  });
+}
 
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      child: FutureBuilder(
-        future: userDetails,
-        builder: (BuildContext context, AsyncSnapshot snapshot) {
+      child: StreamBuilder<UserModel?>(
+        stream: userDetailsStream,
+        builder: (BuildContext context, AsyncSnapshot<UserModel?> snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Container(); // Replace CircularProgressIndicator with an empty Container
-          } else if (snapshot.connectionState == ConnectionState.done) {
-            if (snapshot.hasData) {
-              return ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  UserAccountsDrawerHeader(
-                    accountName: Text(snapshot.data.userFirstName + ' ' + snapshot.data.userLastName),
-                    accountEmail: Text(snapshot.data.userEmail),
-                    currentAccountPicture: CircleAvatar(
-                      child: ClipOval(
-                        child: Image.asset(
-                          'assets/images/user.png',
-                          width: 90,
-                          height: 90,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
+            return CircularProgressIndicator();
+          } else if (snapshot.hasData && snapshot.data != null) {
+            UserModel user = snapshot.data!;
+
+            return ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                UserAccountsDrawerHeader(
+                  accountName: Text(user.userFirstName + ' ' + user.userLastName),
+                  accountEmail: Text(user.userEmail),
+                  currentAccountPicture: CircleAvatar(
+                    child: ClipOval(
+                      child: user.userProfile != null && user.userProfile.isNotEmpty
+                          ? Image.network(
+                              user.userProfile,
+                              width: 90,
+                              height: 90,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                // Handle error loading the network image
+                                return Image.asset(
+                                  'assets/images/user.png',
+                                  width: 90,
+                                  height: 90,
+                                  fit: BoxFit.cover,
+                                );
+                              },
+                            )
+                          : Image.asset(
+                              'assets/images/user.png',
+                              width: 90,
+                              height: 90,
+                              fit: BoxFit.cover,
+                            ),
                     ),
-                    decoration: BoxDecoration(
-                      color: AppConfig.appSecondaryTheme,
-                      image: DecorationImage(
-                        colorFilter: ColorFilter.mode(
-                            AppConfig.appSecondaryTheme.withOpacity(0.3), BlendMode.dstATop),
-                        image: const AssetImage('assets/images/campus_img_2.png'),
-                        fit: BoxFit.cover,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppConfig.appSecondaryTheme,
+                    image: DecorationImage(
+                      colorFilter: ColorFilter.mode(
+                        AppConfig.appSecondaryTheme.withOpacity(0.3),
+                        BlendMode.dstATop,
+                      ),
+                      image: const AssetImage('assets/images/campus_img_2.png'),
+                      fit: BoxFit.cover,
                       ),
                     ),
                   ),
@@ -86,7 +129,9 @@ class AppDrawerState extends State<AppDrawer> {
                     title: const Text('Payment Procedure'),
                     onTap: () {
                       Navigator.push(
-                          context, MaterialPageRoute(builder: (context) => const PaymentProcedures()));
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const PaymentProcedures()));
                     },
                   ),
                   ListTile(
@@ -94,7 +139,9 @@ class AppDrawerState extends State<AppDrawer> {
                     title: const Text('Contact Info'),
                     onTap: () {
                       Navigator.push(
-                          context, MaterialPageRoute(builder: (context) => const ContactInfo()));
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const ContactInfo()));
                     },
                   ),
                   const Divider(),
@@ -103,14 +150,19 @@ class AppDrawerState extends State<AppDrawer> {
                     title: const Text('Account Settings'),
                     onTap: () {
                       Navigator.push(
-                          context, MaterialPageRoute(builder: (context) => const AccountSettings()));
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const AccountSettings()));
                     },
                   ),
                   ListTile(
                     leading: const Icon(Icons.help_outline_outlined),
                     title: const Text('Help'),
                     onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const Help()));
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const Help()));
                     },
                   ),
                   const Divider(),
@@ -119,7 +171,8 @@ class AppDrawerState extends State<AppDrawer> {
                     title: const Text('Log out'),
                     onTap: () async {
                       // Reset the 'dialogShown' flag to false during logout
-                      SharedPreferences prefs = await SharedPreferences.getInstance();
+                      SharedPreferences prefs =
+                          await SharedPreferences.getInstance();
                       prefs.setBool('dialogShown', false);
 
                       // Perform the logout process
@@ -129,17 +182,13 @@ class AppDrawerState extends State<AppDrawer> {
                       Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(builder: (context) => const Login()),
-                            (route) => false, // Remove all existing routes from the stack
+                        (route) =>
+                            false, // Remove all existing routes from the stack
                       );
                     },
                   ),
                 ],
               );
-            } else if (snapshot.hasError) {
-              return Container();
-            } else {
-              return Container();
-            }
           } else {
             return Container();
           }

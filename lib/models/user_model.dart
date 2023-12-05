@@ -1,5 +1,11 @@
 class UserModel {
-  String userCollege, userEmail, userFirstName, userLastName, userNo, userType, userProfile;
+  String userCollege,
+      userEmail,
+      userFirstName,
+      userLastName,
+      userNo,
+      userType,
+      userProfile;
 
   UserModel({
     required this.userCollege,
@@ -11,15 +17,15 @@ class UserModel {
     required this.userProfile,
   });
 
-  static UserModel fromMap(Map<dynamic, dynamic> map) {
+  factory UserModel.fromMap(Map<String, dynamic> map) {
     return UserModel(
-      userCollege: map['userCollege'],
-      userEmail: map['userEmail'],
-      userFirstName: map['userFirstName'],
-      userLastName: map['userLastName'],
-      userNo: map['userNo'],
-      userType: map['userType'],
-      userProfile: map['userProfile'],
+      userCollege: map['userCollege'] ?? '',
+      userEmail: map['userEmail'] ?? '',
+      userFirstName: map['userFirstName'] ?? '',
+      userLastName: map['userLastName'] ?? '',
+      userNo: map['userNo'] ?? '',
+      userType: map['userType'] ?? '',
+      userProfile: map['userProfile'] ?? '',
     );
   }
 }

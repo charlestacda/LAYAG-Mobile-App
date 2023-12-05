@@ -1,5 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:lpu_app/config/app_config.dart';
 import 'package:lpu_app/models/complete_task_model.dart';
 import 'package:lpu_app/models/task_model.dart';
+import 'package:lpu_app/models/user_model.dart';
 import 'package:lpu_app/views/components/app_drawer.dart';
 import 'package:lpu_app/views/help.dart';
 
@@ -24,6 +25,8 @@ dynamic newForm = newFormDate.format(CreateDateNow);
 List<CompleteTaskModel> completedList = [];
 List<TaskModel> todoList = [];
 
+FirebaseFirestore firestore = FirebaseFirestore.instance;
+
 class ToDo extends StatefulWidget {
   const ToDo({Key? key}) : super(key: key);
 
@@ -32,10 +35,10 @@ class ToDo extends StatefulWidget {
 }
 
 class ToDoState extends State<ToDo> {
-  final DatabaseReference _todoreference =
-      FirebaseDatabase.instance.ref().child('Todo List');
-  final DatabaseReference _notifreference =
-      FirebaseDatabase.instance.ref().child('Accounts');
+  final CollectionReference _todoreference =
+      FirebaseFirestore.instance.collection('todo_list');
+  final CollectionReference _notifreference =
+      FirebaseFirestore.instance.collection('users');
 
   TextEditingController todoTask = TextEditingController();
 
@@ -43,17 +46,46 @@ class ToDoState extends State<ToDo> {
   var startDate = DateTime.now();
   late DateTime date = DateTime.now();
   late TimeOfDay time = TimeOfDay.now();
-  TextEditingController timeController = TextEditingController(text: ''); // Ensure it's initialized with an empty string
+  TextEditingController timeController = TextEditingController(
+      text: ''); // Ensure it's initialized with an empty string
   TextEditingController dateController = TextEditingController();
+  late Future<UserModel?> userDetails;
+  String? userID;
 
   @override
-void initState() {
-  super.initState();
-  timeController.text = DateFormat('h:mm a').format(
-    DateTime.now().toUtc().add(const Duration(hours: 8)),
-  );
-  dateController.text = DateFormat('yyyy-MM-dd').format(DateTime.now());
+  void initState() {
+    super.initState();
+    fetchUserID();
+    getToDo();
+    timeController.text = DateFormat('h:mm a').format(
+      DateTime.now().toUtc().add(const Duration(hours: 8)),
+    );
+    dateController.text = DateFormat('yyyy-MM-dd').format(DateTime.now());
+  }
+
+  void fetchUserID() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      setState(() {
+        userID = user.uid;
+        userDetails = getUserDetails(user.uid);
+      });
+    }
+  }
+
+  Future<UserModel?> getUserDetails(String userId) async {
+  FirebaseFirestore firestore = FirebaseFirestore.instance;
+  DocumentSnapshot<Map<String, dynamic>> snapshot =
+      await firestore.collection('users').doc(userId).get();
+
+  if (snapshot.exists) {
+    return UserModel.fromMap(snapshot.data()!);
+  } else {
+    return null;
+  }
 }
+  
 
   DateTime getDateTimeFromString(String dateString) {
     DateFormat format = DateFormat('yyyy-MM-dd h:mm a');
@@ -121,104 +153,116 @@ void initState() {
                           onChanged: (value) => todoTask.text = value,
                         ),
                         TextField(
-  controller: dateController,
-  onTap: () async {
-    DateTime? newDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(1900),
-      lastDate: DateTime(2100),
-    );
+                          controller: dateController,
+                          onTap: () async {
+                            DateTime? newDate = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime.now(),
+                              firstDate: DateTime(1900),
+                              lastDate: DateTime(2100),
+                            );
 
-    if (newDate == null) {
-      return;
-    }
+                            if (newDate == null) {
+                              return;
+                            }
 
-    setState(() {
-      date = newDate;
-      fDate = date;
-      dynamic dateformatter = DateFormat('yyyy-MM-dd');
-      fDate = dateformatter.format(date);
-      dateController.text = fDate; // Update the text field with the selected date
-    });
-  },
-  decoration: InputDecoration(
-    suffixIcon: Icon(Icons.calendar_today, color: AppConfig.appSecondaryTheme),
-    hintText: 'Select Date',
-  ),
-),
-TextField(
-  controller: timeController,
-  onTap: () async {
-    TimeOfDay currentTime = TimeOfDay.fromDateTime(
-      DateTime.now().toUtc().add(const Duration(hours: 8)),
-    );
-    TimeOfDay? newTime = await showTimePicker(
-      context: context,
-      initialTime: currentTime,
-    );
+                            setState(() {
+                              date = newDate;
+                              fDate = date;
+                              dynamic dateformatter = DateFormat('yyyy-MM-dd');
+                              fDate = dateformatter.format(date);
+                              dateController.text =
+                                  fDate; // Update the text field with the selected date
+                            });
+                          },
+                          decoration: InputDecoration(
+                            suffixIcon: Icon(Icons.calendar_today,
+                                color: AppConfig.appSecondaryTheme),
+                            hintText: 'Select Date',
+                          ),
+                        ),
+                        TextField(
+                          controller: timeController,
+                          onTap: () async {
+                            TimeOfDay currentTime = TimeOfDay.fromDateTime(
+                              DateTime.now()
+                                  .toUtc()
+                                  .add(const Duration(hours: 8)),
+                            );
+                            TimeOfDay? newTime = await showTimePicker(
+                              context: context,
+                              initialTime: currentTime,
+                            );
 
-    if (newTime == null) {
-      return;
-    }
+                            if (newTime == null) {
+                              return;
+                            }
 
-    setState(() {
-      time = newTime; // Set the selected time from the picker
-      fTime = time.format(context); // Format the selected time for displaying in the TextField
-      timeController.text = fTime; // Update the text field with the selected time
-    });
-  },
-  decoration: InputDecoration(
-    suffixIcon: Icon(Icons.access_time, color: AppConfig.appSecondaryTheme),
-    hintText: 'Select Time',
-  ),
-),
-
-
-
+                            setState(() {
+                              time =
+                                  newTime; // Set the selected time from the picker
+                              fTime = time.format(
+                                  context); // Format the selected time for displaying in the TextField
+                              timeController.text =
+                                  fTime; // Update the text field with the selected time
+                            });
+                          },
+                          decoration: InputDecoration(
+                            suffixIcon: Icon(Icons.access_time,
+                                color: AppConfig.appSecondaryTheme),
+                            hintText: 'Select Time',
+                          ),
+                        ),
                       ],
                     ),
                     actions: <Widget>[
                       TextButton(
-  onPressed: () {
-    final newTodo = FirebaseAuth.instance.currentUser;
-    final newID = newTodo?.uid;
+                        onPressed: () {
+                          final newTodo = FirebaseAuth.instance.currentUser;
+                          final newID = newTodo?.uid;
 
-    fDate ??= newForm;
-    fTime ??= CreateTimeNow.format(context);
+                          fDate ??= newForm;
+                          fTime ??= CreateTimeNow.format(context);
 
-    if (todoTask.text.isEmpty) {
-      Fluttertoast.showToast(msg: 'Please set task title');
-    } else if (fDate == null || fTime == null) {
-      Fluttertoast.showToast(msg: 'Please set Date and Time');
-    } else {
-      try {
-        DateTime selectedDateTime = DateFormat('yyyy-MM-dd hh:mm a').parse('$fDate $fTime');
-        DateTime currentDateTime = DateTime.now();
+                          if (todoTask.text.isEmpty) {
+                            Fluttertoast.showToast(
+                                msg: 'Please set task title');
+                          } else if (fDate == null || fTime == null) {
+                            Fluttertoast.showToast(
+                                msg: 'Please set Date and Time');
+                          } else {
+                            try {
+                              DateTime selectedDateTime =
+                                  DateFormat('yyyy-MM-dd hh:mm a')
+                                      .parse('$fDate $fTime');
+                              DateTime currentDateTime = DateTime.now();
 
-        if (selectedDateTime.isBefore(currentDateTime)) {
-          Fluttertoast.showToast(msg: 'Please select a future Time');
-        } else {
-          addToDo(newID!);
-          setState(() {
-            todoList.add(TaskModel(
-              createdDate: DateTime.now().toString() + ' ' + TimeOfDay.now().toString(),
-              deadlineDate: fDate + ' ' + fTime,
-              todoTask: todoTask.text,
-              todoStatus: 'Pending',
-            ));
-          });
-          Navigator.of(context).pop();
-        }
-      } catch (e) {
-        print('Error parsing date/time: $e');
-        Fluttertoast.showToast(msg: 'Error parsing date/time');
-      }
-    }
-  },
-  child: const Text('Add'),
-),
-
+                              if (selectedDateTime.isBefore(currentDateTime)) {
+                                Fluttertoast.showToast(
+                                    msg: 'Please select a future Time');
+                              } else {
+                                addToDo(newID!);
+                                setState(() {
+                                  todoList.add(TaskModel(
+                                    createdDate: DateTime.now().toString() +
+                                        ' ' +
+                                        TimeOfDay.now().toString(),
+                                    deadlineDate: fDate + ' ' + fTime,
+                                    todoTask: todoTask.text,
+                                    todoStatus: 'Pending',
+                                  ));
+                                });
+                                Navigator.of(context).pop();
+                              }
+                            } catch (e) {
+                              print('Error parsing date/time: $e');
+                              Fluttertoast.showToast(
+                                  msg: 'Error parsing date/time');
+                            }
+                          }
+                        },
+                        child: const Text('Add'),
+                      ),
                     ],
                   );
                 });
@@ -261,19 +305,19 @@ TextField(
                             icon: const Icon(Icons.check_box_outline_blank),
                             color: const Color(0xFF606060),
                             onPressed: () async {
-                              await FirebaseDatabase.instance
-                                  .ref()
-                                  .child('Completed List')
-                                  .child(userID)
-                                  .child(todoList[index].todoTask)
+                              await FirebaseFirestore.instance
+                                  .collection('completed_list')
+                                  .doc(userID)
                                   .set({
-                                'TodoTask': todoList[index].todoTask,
-                                'CreatedDate': newForm.toString() +
-                                    ' ' +
-                                    CreateTimeNow.format(context).toString(),
-                                'TargetDate': todoList[index].deadlineDate,
-                                'TodoStatus': 'Completed',
-                              });
+                                todoList[index].todoTask: {
+                                  'TodoTask': todoList[index].todoTask,
+                                  'CreatedDate': newForm.toString() +
+                                      ' ' +
+                                      CreateTimeNow.format(context).toString(),
+                                  'TargetDate': todoList[index].deadlineDate,
+                                  'TodoStatus': 'Completed',
+                                }
+                              }, SetOptions(merge: true));
 
                               completedList.add(CompleteTaskModel(
                                   CreatedDate: newForm.toString() +
@@ -284,12 +328,12 @@ TextField(
                                   TodoTask: todoList[index].todoTask,
                                   TodoStatus: 'Completed'));
 
-                              await FirebaseDatabase.instance
-                                  .ref()
-                                  .child('Todo List')
-                                  .child(userID)
-                                  .child(todoList[index].todoTask)
-                                  .remove();
+                              await FirebaseFirestore.instance
+                                  .collection('todo_list')
+                                  .doc(userID)
+                                  .update({
+                                todoList[index].todoTask: FieldValue.delete(),
+                              });
 
                               setState(() {
                                 todoList.removeAt(index);
@@ -356,21 +400,21 @@ TextField(
                                 icon: const Icon(Icons.check_box_outlined),
                                 color: const Color(0xff606060),
                                 onPressed: () async {
-                                  await FirebaseDatabase.instance
-                                      .ref()
-                                      .child('Todo List')
-                                      .child(userID)
-                                      .child(completedList[index].TodoTask)
+                                  await FirebaseFirestore.instance
+                                      .collection('todo_list')
+                                      .doc(userID)
                                       .set({
-                                    'todoTask': completedList[index].TodoTask,
-                                    'createdDate': newForm.toString() +
-                                        ' ' +
-                                        CreateTimeNow.format(context)
-                                            .toString(),
-                                    'targetDate':
-                                        completedList[index].DeadlineDate,
-                                    'todoStatus': 'Pending',
-                                  });
+                                    completedList[index].TodoTask: {
+                                      'todoTask': completedList[index].TodoTask,
+                                      'createdDate': newForm.toString() +
+                                          ' ' +
+                                          CreateTimeNow.format(context)
+                                              .toString(),
+                                      'targetDate':
+                                          completedList[index].DeadlineDate,
+                                      'todoStatus': 'Pending',
+                                    }
+                                  }, SetOptions(merge: true));
 
                                   todoList.add(TaskModel(
                                       createdDate: newForm.toString() +
@@ -382,12 +426,12 @@ TextField(
                                       todoTask: completedList[index].TodoTask,
                                       todoStatus: 'Pending'));
 
-                                  await FirebaseDatabase.instance
-                                      .ref()
-                                      .child('Completed List')
-                                      .child(userID)
-                                      .child(completedList[index].TodoTask)
-                                      .remove();
+                                  await FirebaseFirestore.instance
+                                      .collection('completed_list')
+                                      .doc(userID)
+                                      .update({
+                                completedList[index].TodoTask: FieldValue.delete(),
+                              });
 
                                   setState(() {
                                     completedList.removeAt(index);
@@ -398,12 +442,12 @@ TextField(
                                 icon: const Icon(Icons.close),
                                 color: const Color(0xff606060),
                                 onPressed: () async {
-                                  await FirebaseDatabase.instance
-                                      .ref()
-                                      .child('Completed List')
-                                      .child(userID)
-                                      .child(completedList[index].TodoTask)
-                                      .remove();
+                                  await FirebaseFirestore.instance
+                                      .collection('completed_list')
+                                      .doc(userID)
+                                      .update({
+                                completedList[index].TodoTask: FieldValue.delete(),
+                              });
 
                                   setState(() {
                                     completedList.removeAt(index);
@@ -420,20 +464,69 @@ TextField(
       );
 
   void addToDo(String ID) async {
-    await _todoreference.child(ID).child(todoTask.text).set({
-      'todoTask': todoTask.text,
-      'createdDate':
-          newForm.toString() + ' ' + CreateTimeNow.format(context).toString(),
-      'targetDate': fDate.toString() + ' ' + fTime.toString(),
-      'todoStatus': 'Pending',
-    }).asStream();
-    await _notifreference
-        .child(ID)
-        .child('Notifications')
-        .child(todoTask.text)
-        .set({
-      'notifName': todoTask.text,
-      'notifTitle': 'Added To Do: ' + todoTask.text
-    });
+    await _todoreference.doc(ID).set({
+      todoTask.text: {
+        'todoTask': todoTask.text,
+        'createdDate':
+            newForm.toString() + ' ' + CreateTimeNow.format(context).toString(),
+        'targetDate': fDate.toString() + ' ' + fTime.toString(),
+        'todoStatus': 'Pending',
+      } 
+    }, SetOptions(merge: true)).asStream();
+    await _notifreference.doc(ID).set({
+      'Notifications': {
+        todoTask.text: {
+          'notifName': todoTask.text,
+          'notifTitle': 'Added To Do: ' + todoTask.text
+        }
+      }
+    }, SetOptions(merge: true));
+  }
+
+
+  Future<void> getToDo() async {
+  final user = FirebaseAuth.instance.currentUser;
+
+  if (user != null) {
+    try {
+      final todoSnapshot = await FirebaseFirestore.instance.collection('todo_list').doc(user.uid).get();
+      final completedSnapshot = await FirebaseFirestore.instance.collection('completed_list').doc(user.uid).get();
+
+      if (todoSnapshot.exists) {
+        final _tasksMap = Map<String, dynamic>.from(todoSnapshot.data() as Map<String, dynamic>);
+        final tasksList = _tasksMap.entries.map((entry) => TaskModel.fromMap(Map<String, dynamic>.from(entry.value))).toList();
+
+        setState(() {
+          todoList = tasksList; // Update todoList with fetched tasks
+        });
+      } else {
+        setState(() {
+          todoList = []; // If no tasks found, set todoList as an empty list
+        });
+      }
+
+      if (completedSnapshot.exists) {
+        final cTasksMap = Map<String, dynamic>.from(completedSnapshot.data() as Map<String, dynamic>);
+        final cTasksList = cTasksMap.entries.map((entry) => CompleteTaskModel.fromMap(Map<String, dynamic>.from(entry.value))).toList();
+
+        setState(() {
+          completedList = cTasksList; // Update completedList with fetched tasks
+        });
+      } else {
+        setState(() {
+          completedList = []; // If no completed tasks found, set completedList as an empty list
+        });
+      }
+    } catch (e) {
+      print('Error fetching tasks: $e');
+      // Handle error as needed
+    }
   }
 }
+
+}
+
+
+
+
+

@@ -1,5 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:lpu_app/config/app_config.dart';
@@ -16,10 +16,11 @@ class FacultyRegistration extends StatefulWidget {
 }
 
 class FacultyRegistrationState extends State<FacultyRegistration> {
-  FirebaseDatabase referenceData = FirebaseDatabase.instance;
+  FirebaseFirestore referenceData = FirebaseFirestore.instance;
   final formKey = GlobalKey<FormState>();
 
-  final DatabaseReference facultyReference = FirebaseDatabase.instance.ref().child('Accounts');
+  CollectionReference<Map<String, dynamic>> facultyReference =
+    FirebaseFirestore.instance.collection('users');
   TextEditingController facultyNumber = TextEditingController();
   TextEditingController facultyEmail = TextEditingController();
   TextEditingController facultyPassword = TextEditingController();
@@ -307,7 +308,7 @@ class FacultyRegistrationState extends State<FacultyRegistration> {
                             final user = FirebaseAuth.instance.currentUser;
                             final userID = user?.uid;
 
-                            await facultyReference.child(userID!).set({
+                            await facultyReference.doc(userID).set({
                               'userCollege': facultyCollege.text,
                               'userEmail': facultyEmail.text,
                               'userFirstName': facultyFirstName.text,

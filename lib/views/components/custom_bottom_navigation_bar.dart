@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:lpu_app/config/app_config.dart';
 import 'package:lpu_app/views/home.dart';
 import 'package:lpu_app/views/calendar.dart';
-import 'package:lpu_app/views/news.dart';
 import 'package:lpu_app/views/todo.dart';
 import 'package:lpu_app/views/notifications.dart';
-import 'package:lpu_app/views/add_article.dart';
 
 class CustomBottomNavigationBar extends StatefulWidget {
   const CustomBottomNavigationBar({Key? key}) : super(key: key);
@@ -20,7 +18,7 @@ class BottomNavState extends State<CustomBottomNavigationBar> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: const [Home(), Calendar(), ToDo(), News(), Notifications(), AddArticle()][currentIndex],
+      body: const [Home(), Calendar(), ToDo(), Notifications()][currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
         onTap: (index) => setState(() => currentIndex = index),
