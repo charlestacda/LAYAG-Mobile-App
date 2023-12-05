@@ -3,7 +3,7 @@
    <application
         android:label="LAYAG"
         android:name="${applicationName}"
-        android:icon="@mipmap/layag_app"
+        android:icon="@mipmap/launcher_icon"
         android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"

@@ -125,7 +125,7 @@ Future<void> fetchTips(String userType) async {
 Future<void> fetchPortals(String userType) async {
   try {
     portalsSubscription = FirebaseFirestore.instance.collection('portals')
-        .orderBy('dateAdded')
+        .orderBy('dateEdited', descending: false)
         .snapshots()
         .listen((querySnapshot) {
       List<Portal> fetchedPortals = [];

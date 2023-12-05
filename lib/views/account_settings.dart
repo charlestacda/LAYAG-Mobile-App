@@ -622,6 +622,7 @@ class _AccountSettingsState extends State<_AccountSettings> {
                 width: double.infinity,
               ),
             ),
+            const SizedBox(height: 20),
           ],
         ),
       ),

@@ -110,7 +110,7 @@ class AppDrawerState extends State<AppDrawer> {
                               height: 90,
                               fit: BoxFit.cover,
                             ),
-                    ),
+                    ),backgroundColor: AppConfig.appSecondaryTheme,
                   ),
                   decoration: BoxDecoration(
                     color: AppConfig.appSecondaryTheme,
