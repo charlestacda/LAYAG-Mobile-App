@@ -20,7 +20,7 @@ import 'package:lpu_app/models/portal_model.dart';
 import 'package:lpu_app/models/tip_model.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
+
 
 
 class Home extends StatefulWidget {
@@ -53,19 +53,29 @@ class HomeState extends State<Home> {
   final user = FirebaseAuth.instance.currentUser;
 
   if (user != null) {
-    final userReference =
-        FirebaseDatabase.instance.ref().child('Accounts').child(user.uid);
-    DataSnapshot snapshot = await userReference.get();
+  final userReference = FirebaseFirestore.instance.collection('users').doc(user.uid);
+  
+  try {
+    DocumentSnapshot snapshot = await userReference.get();
 
-    final userData = snapshot.value as Map<dynamic, dynamic>;
-    final String fetchedUserType = userData['userType'] ?? '';
+    if (snapshot.exists) {
+      final userData = snapshot.data() as Map<String, dynamic>;
+      final String fetchedUserType = userData['userType'] ?? '';
 
-    Provider.of<UserTypeProvider>(context, listen: false)
-        .setUserType(fetchedUserType);
+      Provider.of<UserTypeProvider>(context, listen: false)
+          .setUserType(fetchedUserType);
 
-    fetchTips(fetchedUserType);
-    fetchPortals(fetchedUserType);
+      fetchTips(fetchedUserType);
+      fetchPortals(fetchedUserType);
+    } else {
+      // Handle case where user document doesn't exist
+    }
+  } catch (e) {
+    // Handle exceptions, such as FirestoreError, if any
+    print('Error fetching user data: $e');
   }
+}
+
 }
 
 

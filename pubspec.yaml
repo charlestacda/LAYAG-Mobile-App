@@ -66,6 +66,8 @@ dependencies:
   permission_handler: ^11.1.0
   cached_network_image: ^3.3.0
   flutter_markdown: ^0.6.18+2
+  
+
 
 dev_dependencies:
   flutter_test:
@@ -147,7 +149,6 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
-
 flutter_icons:
   android: 'launcher_icon'
   ios: true
@@ -171,9 +172,9 @@ flutter_icons:
 
 flutter_native_splash:
   color: "#ffffff"
-  image:  assets/icons/layag_icon.png
+  image:  assets/icons/layag_app_big.png
   color_dark: "#ffffff"
-  image_dark:  assets/icons/layag_icon.png
+  image_dark:  assets/icons/layag_app_big.png
 
   android_12:
     color: "#ffffff"

@@ -13,10 +13,10 @@ class RegistrationMenu extends StatefulWidget {
 }
 
 class RegistrationMenuState extends State<RegistrationMenu> {
-  Widget regStudent() => Card(
-      color: const Color(0xffD94141),
-      child: GestureDetector(
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const StudentRegistration())),
+ Widget regStudent() => GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const StudentRegistration())),
+      child: Card(
+        color: const Color(0xffD94141),
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
@@ -41,12 +41,13 @@ class RegistrationMenuState extends State<RegistrationMenu> {
             ],
           ),
         ),
-      ));
+      ),
+    );
 
-  Widget regFaculty() => Card(
-      color: const Color(0xffD94141),
-      child: GestureDetector(
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FacultyRegistration())),
+Widget regFaculty() => GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FacultyRegistration())),
+      child: Card(
+        color: const Color(0xffD94141),
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
@@ -71,7 +72,9 @@ class RegistrationMenuState extends State<RegistrationMenu> {
             ],
           ),
         ),
-      ));
+      ),
+    );
+
 
   @override
   Widget build(BuildContext context) {
