@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:lpu_app/config/app_config.dart';
 import 'package:lpu_app/config/list_config.dart';
@@ -20,7 +21,7 @@ class StudentRegistrationState extends State<StudentRegistration> {
   final _formKey = GlobalKey<FormState>();
 
   CollectionReference<Map<String, dynamic>> studentReference =
-    FirebaseFirestore.instance.collection('users');
+      FirebaseFirestore.instance.collection('users');
   TextEditingController studentNumber = TextEditingController();
   TextEditingController studentEmail = TextEditingController();
   TextEditingController studentPassword = TextEditingController();
@@ -29,18 +30,24 @@ class StudentRegistrationState extends State<StudentRegistration> {
   TextEditingController studentLName = TextEditingController();
   TextEditingController studentCollege = TextEditingController();
 
-  RegExp pattern = RegExp('(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#%^&+=])(?=\\S+).{8,}');
+  RegExp pattern =
+      RegExp('(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#%^&+=])(?=\\S+).{8,}');
 
   bool isPasswordEightCharacters = false;
   bool hasOneNumeric = false;
   bool hasOneSpecialCharacter = false;
   bool hasOneUpperCase = false;
+  bool passwordsMatch = false;
+  bool hasOneLowerCase = false;
 
   bool toggle = false;
 
   String? college;
 
   bool isRegistering = false;
+  bool isPrivacyPolicyChecked = false;
+
+  List<bool> fieldEmpty = List.filled(7, true);
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +60,10 @@ class StudentRegistrationState extends State<StudentRegistration> {
           ),
           color: AppConfig.appSecondaryTheme,
           onPressed: () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const RegistrationMenu()));
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const RegistrationMenu()));
           },
         ),
       ),
@@ -69,33 +79,122 @@ class StudentRegistrationState extends State<StudentRegistration> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     width: double.infinity,
-                    alignment: Alignment.center,
-                    child: const Text(
+                    alignment: Alignment
+                        .center, // Align the content of the container to the center
+                    child: Text(
                       'REGISTER AS STUDENT',
-                      style: TextStyle(fontFamily: 'Futura', color: Color(0xffD94141), fontSize: 28, fontWeight: FontWeight.w600),
+                      textAlign:
+                          TextAlign.center, // Center the text horizontally
+                      style: TextStyle(
+                        fontFamily: 'Futura',
+                        color: Color(0xffD94141),
+                        fontSize: 28,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
-                    decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'Student ID Number'),
-                    onChanged: (value) => studentNumber.text = value,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide: BorderSide(
+                          color: Colors.grey, // Default border color
+                          width: 1.0,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide: BorderSide(
+                          color: fieldEmpty[0]
+                              ? Colors.red
+                              : Colors
+                                  .grey, // Change border color based on condition
+                          width: 1.0,
+                        ),
+                      ),
+                      hintText: 'Student ID Number',
+                      suffixIcon: fieldEmpty[0]
+                          ? Icon(Icons.error_outline, color: Colors.red)
+                          : null,
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        fieldEmpty[0] = value.isEmpty;
+                        studentNumber.text = value;
+                      });
+                    },
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
-                    decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'Email Address'),
-                    onChanged: (value) => studentEmail.text = value,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide: BorderSide(
+                          color: Colors.grey, // Default border color
+                          width: 1.0,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide: BorderSide(
+                          color: fieldEmpty[1]
+                              ? Colors.red
+                              : Colors
+                                  .grey, // Change border color based on condition
+                          width: 1.0,
+                        ),
+                      ),
+                      hintText: 'Email Address',
+                      suffixIcon: fieldEmpty[1]
+                          ? Icon(Icons.error_outline, color: Colors.red)
+                          : null,
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        fieldEmpty[1] = value.isEmpty;
+                        studentEmail.text = value;
+                      });
+                    },
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
                     obscureText: true,
-                    decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'Password'),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                    ],
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide: BorderSide(
+                          color: Colors.grey, // Default border color
+                          width: 1.0,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide: BorderSide(
+                          color: fieldEmpty[2]
+                              ? Colors.red
+                              : Colors
+                                  .grey, // Change border color based on condition
+                          width: 1.0,
+                        ),
+                      ),
+                      hintText: 'Password',
+                      suffixIcon: fieldEmpty[2]
+                          ? Icon(Icons.error_outline, color: Colors.red)
+                          : null,
+                    ),
                     onChanged: (String password) {
                       final numericRegex = RegExp(r'(?=.*[0-9])');
+                      final lowerCase = RegExp(r'(?=.*[a-z])');
                       final upperCase = RegExp(r'(?=.*[A-Z])');
                       final specialCase = RegExp(r'(?=.*[!@#$%^&*+=])');
                       studentPassword.text = password;
 
                       setState(() {
+                        fieldEmpty[2] = password.isEmpty;
                         isPasswordEightCharacters = false;
 
                         if (password.length >= 8) {
@@ -106,6 +205,12 @@ class StudentRegistrationState extends State<StudentRegistration> {
 
                         if (numericRegex.hasMatch(password)) {
                           hasOneNumeric = true;
+                        }
+
+                        hasOneLowerCase = false;
+
+                        if (lowerCase.hasMatch(password)) {
+                          hasOneLowerCase = true;
                         }
 
                         hasOneUpperCase = false;
@@ -119,6 +224,14 @@ class StudentRegistrationState extends State<StudentRegistration> {
                         if (specialCase.hasMatch(password)) {
                           hasOneSpecialCharacter = true;
                         }
+
+                        if (studentPassword.text.isNotEmpty ||
+                            studentConfirmPassword.text.isNotEmpty) {
+                          passwordsMatch = studentPassword.text ==
+                              studentConfirmPassword.text;
+                        } else {
+                          passwordsMatch = false;
+                        }
                       });
                     },
                   ),
@@ -129,7 +242,14 @@ class StudentRegistrationState extends State<StudentRegistration> {
                         duration: const Duration(milliseconds: 500),
                         width: 18,
                         height: 18,
-                        decoration: BoxDecoration(color: isPasswordEightCharacters ? AppConfig.appSecondaryTheme : Colors.transparent, border: isPasswordEightCharacters ? Border.all(color: Colors.transparent) : Border.all(color: Colors.grey.shade400), borderRadius: BorderRadius.circular(50)),
+                        decoration: BoxDecoration(
+                            color: isPasswordEightCharacters
+                                ? AppConfig.appSecondaryTheme
+                                : Colors.transparent,
+                            border: isPasswordEightCharacters
+                                ? Border.all(color: Colors.transparent)
+                                : Border.all(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(50)),
                         child: const Center(
                           child: Icon(
                             Icons.check,
@@ -151,7 +271,14 @@ class StudentRegistrationState extends State<StudentRegistration> {
                         duration: const Duration(milliseconds: 500),
                         width: 18,
                         height: 18,
-                        decoration: BoxDecoration(color: hasOneNumeric ? AppConfig.appSecondaryTheme : Colors.transparent, border: hasOneNumeric ? Border.all(color: Colors.transparent) : Border.all(color: Colors.grey.shade400), borderRadius: BorderRadius.circular(50)),
+                        decoration: BoxDecoration(
+                            color: hasOneNumeric
+                                ? AppConfig.appSecondaryTheme
+                                : Colors.transparent,
+                            border: hasOneNumeric
+                                ? Border.all(color: Colors.transparent)
+                                : Border.all(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(50)),
                         child: const Center(
                           child: Icon(
                             Icons.check,
@@ -173,7 +300,43 @@ class StudentRegistrationState extends State<StudentRegistration> {
                         duration: const Duration(milliseconds: 500),
                         width: 18,
                         height: 18,
-                        decoration: BoxDecoration(color: hasOneUpperCase ? AppConfig.appSecondaryTheme : Colors.transparent, border: hasOneUpperCase ? Border.all(color: Colors.transparent) : Border.all(color: Colors.grey.shade400), borderRadius: BorderRadius.circular(50)),
+                        decoration: BoxDecoration(
+                            color: hasOneLowerCase
+                                ? AppConfig.appSecondaryTheme
+                                : Colors.transparent,
+                            border: hasOneLowerCase
+                                ? Border.all(color: Colors.transparent)
+                                : Border.all(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(50)),
+                        child: const Center(
+                          child: Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: 15,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(
+                        width: 10,
+                      ),
+                      const Text('Contains at least 1 lowercase')
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 500),
+                        width: 18,
+                        height: 18,
+                        decoration: BoxDecoration(
+                            color: hasOneUpperCase
+                                ? AppConfig.appSecondaryTheme
+                                : Colors.transparent,
+                            border: hasOneUpperCase
+                                ? Border.all(color: Colors.transparent)
+                                : Border.all(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(50)),
                         child: const Center(
                           child: Icon(
                             Icons.check,
@@ -195,7 +358,14 @@ class StudentRegistrationState extends State<StudentRegistration> {
                         duration: const Duration(milliseconds: 500),
                         width: 18,
                         height: 18,
-                        decoration: BoxDecoration(color: hasOneSpecialCharacter ? AppConfig.appSecondaryTheme : Colors.transparent, border: hasOneSpecialCharacter ? Border.all(color: Colors.transparent) : Border.all(color: Colors.grey.shade400), borderRadius: BorderRadius.circular(50)),
+                        decoration: BoxDecoration(
+                            color: hasOneSpecialCharacter
+                                ? AppConfig.appSecondaryTheme
+                                : Colors.transparent,
+                            border: hasOneSpecialCharacter
+                                ? Border.all(color: Colors.transparent)
+                                : Border.all(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(50)),
                         child: const Center(
                           child: Icon(
                             Icons.check,
@@ -207,60 +377,203 @@ class StudentRegistrationState extends State<StudentRegistration> {
                       const SizedBox(
                         width: 10,
                       ),
-                      const Text('Contains at least 1 special character')
+                      const Text('Contains  at least 1 special')
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 500),
+                        width: 18,
+                        height: 18,
+                        decoration: BoxDecoration(
+                          color: passwordsMatch
+                              ? AppConfig.appSecondaryTheme
+                              : Colors.transparent,
+                          border: passwordsMatch
+                              ? Border.all(color: Colors.transparent)
+                              : Border.all(color: Colors.grey.shade400),
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                        child: passwordsMatch
+                            ? const Center(
+                                child: Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 15,
+                                ),
+                              )
+                            : null,
+                      ),
+                      const SizedBox(
+                        width: 10,
+                      ),
+                      const Text('Password and Confirm Password match')
                     ],
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
                     obscureText: true,
-                    decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'Confirm Password'),
-                    onChanged: (value) => studentConfirmPassword.text = value,
-                  ),
-                  const SizedBox(height: 20),
-                  TextFormField(
-                    decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'First Name'),
-                    onChanged: (value) => studentFName.text = value,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                    ],
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide: BorderSide(
+                          color: Colors.grey, // Default border color
+                          width: 1.0,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide: BorderSide(
+                          color: fieldEmpty[3]
+                              ? Colors.red
+                              : Colors
+                                  .grey, // Change border color based on condition
+                          width: 1.0,
+                        ),
+                      ),
+                      hintText: 'Confirm Password',
+                      suffixIcon: fieldEmpty[3]
+                          ? Icon(Icons.error_outline, color: Colors.red)
+                          : null,
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        fieldEmpty[3] = value.isEmpty;
+                        studentConfirmPassword.text = value;
+
+                        // Check if both passwords match whenever confirm password field changes
+                        if (studentPassword.text.isNotEmpty ||
+                            studentConfirmPassword.text.isNotEmpty) {
+                          passwordsMatch = studentPassword.text ==
+                              studentConfirmPassword.text;
+                        } else {
+                          passwordsMatch = false;
+                        }
+                      });
+                    },
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
-                    decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'Last Name'),
-                    onChanged: (value) => studentLName.text = value,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide: BorderSide(
+                          color: Colors.grey, // Default border color
+                          width: 1.0,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide: BorderSide(
+                          color: fieldEmpty[4]
+                              ? Colors.red
+                              : Colors
+                                  .grey, // Change border color based on condition
+                          width: 1.0,
+                        ),
+                      ),
+                      hintText: 'First Name',
+                      suffixIcon: fieldEmpty[4]
+                          ? Icon(Icons.error_outline, color: Colors.red)
+                          : null,
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        fieldEmpty[4] = value.isEmpty;
+                        studentFName.text = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide: BorderSide(
+                          color: Colors.grey, // Default border color
+                          width: 1.0,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide: BorderSide(
+                          color: fieldEmpty[5]
+                              ? Colors.red
+                              : Colors
+                                  .grey, // Change border color based on condition
+                          width: 1.0,
+                        ),
+                      ),
+                      hintText: 'Last Name',
+                      suffixIcon: fieldEmpty[5]
+                          ? Icon(Icons.error_outline, color: Colors.red)
+                          : null,
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        fieldEmpty[5] = value.isEmpty;
+                        studentLName.text = value;
+                      });
+                    },
                   ),
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.fromLTRB(10, 2, 10, 2),
                     width: double.infinity,
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: fieldEmpty[6]
+                            ? Colors.red
+                            : Colors
+                                .grey, // Change border color based on condition
+                        width: 1.0,
+                      ),
+                      borderRadius: BorderRadius.circular(5.0),
+                    ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton(
-                          hint: const Text('College'),
-                          value: college,
-                          icon: const Icon(Icons.keyboard_arrow_down),
-                          iconSize: 30,
-                          items: ListConfig.colleges.map((String item) {
-                            return DropdownMenuItem(value: item, child: Text(item));
-                          }).toList(),
-                          onChanged: (String? newCollege) {
-                            setState(() {
-                              college = newCollege!;
-                              studentCollege.text = college!;
-                            });
-                          }),
-                    ),
-                    decoration: const ShapeDecoration(
-                      shape: RoundedRectangleBorder(
-                        side: BorderSide(width: 1.0, style: BorderStyle.solid, color: Colors.grey),
-                        borderRadius: BorderRadius.all(Radius.circular(5.0)),
+                        hint: const Text('College'),
+                        value: college,
+                        icon: const Icon(Icons.keyboard_arrow_down),
+                        iconSize: 30,
+                        items: ListConfig.colleges.map((String item) {
+                          return DropdownMenuItem(
+                              value: item, child: Text(item));
+                        }).toList(),
+                        onChanged: (String? newCollege) {
+                          setState(() {
+                            college = newCollege;
+                            studentCollege.text = college ??
+                                ''; // Set the text field based on selection
+                            // Validate if an item has been selected or not
+                            fieldEmpty[6] = college ==
+                                null; // Update fieldEmpty based on selection
+                          });
+                        },
+                        style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 16), // Set text color and size
+                        dropdownColor:
+                            Colors.white, // Set dropdown background color
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
                   Row(children: [
                     IconButton(
-                      icon: toggle ? const Icon(Icons.check_box) : const Icon(Icons.check_box_outline_blank),
+                      icon: toggle
+                          ? const Icon(Icons.check_box)
+                          : const Icon(Icons.check_box_outline_blank),
                       color: AppConfig.appSecondaryTheme,
                       onPressed: () {
                         setState(() {
                           toggle = !toggle;
+                          isPrivacyPolicyChecked = toggle;
                         });
                       },
                     ),
@@ -269,9 +582,13 @@ class StudentRegistrationState extends State<StudentRegistration> {
                       style: TextStyle(fontSize: 17),
                     ),
                     TextButton(
-                      child: const Text('Privacy Policy.', style: TextStyle(fontSize: 17)),
+                      child: const Text('Privacy Policy.',
+                          style: TextStyle(fontSize: 17)),
                       onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => const PrivacyPolicy()));
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const PrivacyPolicy()));
                       },
                     ),
                   ]),
@@ -279,24 +596,39 @@ class StudentRegistrationState extends State<StudentRegistration> {
                   ElevatedButton(
                     onPressed: () async {
                       if (!isRegistering) {
-                        if (studentNumber.text.isEmpty || studentEmail.text.isEmpty || studentPassword.text.isEmpty || studentConfirmPassword.text.isEmpty || studentFName.text.isEmpty || studentLName.text.isEmpty || studentCollege.text.isEmpty) {
+                        if (studentNumber.text.isEmpty ||
+                            studentEmail.text.isEmpty ||
+                            studentPassword.text.isEmpty ||
+                            studentConfirmPassword.text.isEmpty ||
+                            studentFName.text.isEmpty ||
+                            studentLName.text.isEmpty ||
+                            studentCollege.text.isEmpty) {
                           Fluttertoast.showToast(
                             msg: 'Fill all the fields.',
                             fontSize: 16,
                           );
-                        } else if (!RegExp(r'\S+@lpunetwork.edu.ph').hasMatch(studentEmail.text)) {
+                        } else if (!RegExp(r'\S+@lpunetwork.edu.ph')
+                            .hasMatch(studentEmail.text)) {
                           Fluttertoast.showToast(
                             msg: 'Invalid Email Address.',
                             fontSize: 16,
                           );
-                        } else if (studentPassword.text != studentConfirmPassword.text) {
+                        } else if (studentPassword.text !=
+                            studentConfirmPassword.text) {
                           Fluttertoast.showToast(
                             msg: 'Password didn\'t match.',
                             fontSize: 16,
                           );
-                        } else if (pattern.hasMatch(studentPassword.text) == false) {
+                        } else if (pattern.hasMatch(studentPassword.text) ==
+                            false) {
                           Fluttertoast.showToast(
                             msg: 'Password is weak',
+                            fontSize: 16,
+                          );
+                        } else if (!isPrivacyPolicyChecked) {
+                          // Check if Privacy Policy is checked
+                          Fluttertoast.showToast(
+                            msg: 'Please agree to the Privacy Policy',
                             fontSize: 16,
                           );
                         } else {
@@ -305,7 +637,10 @@ class StudentRegistrationState extends State<StudentRegistration> {
                           });
 
                           try {
-                            await FirebaseAuth.instance.createUserWithEmailAndPassword(email: studentEmail.text, password: studentPassword.text);
+                            await FirebaseAuth.instance
+                                .createUserWithEmailAndPassword(
+                                    email: studentEmail.text,
+                                    password: studentPassword.text);
 
                             final user = FirebaseAuth.instance.currentUser;
                             final userID = user?.uid;
@@ -322,12 +657,12 @@ class StudentRegistrationState extends State<StudentRegistration> {
                             });
 
                             setState(() {
-                              isRegistering = false;
+                              isRegistering = true;
                             });
-
                             showDialog(
                               context: context,
                               builder: (BuildContext context) {
+                                isRegistering = false;
                                 return AlertDialog(
                                   title: Row(
                                     children: [
@@ -343,30 +678,46 @@ class StudentRegistrationState extends State<StudentRegistration> {
                                   content: const Text(
                                     'Registration Complete! You may now log in your account',
                                     textAlign: TextAlign.center,
-                                    style: TextStyle(fontFamily: 'Futura', fontSize: 22, fontWeight: FontWeight.w600),
+                                    style: TextStyle(
+                                        fontFamily: 'Futura',
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w600),
                                   ),
                                   actions: [
                                     SizedBox(
                                         width: double.infinity,
                                         child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
                                           children: <Widget>[
                                             ElevatedButton(
                                               onPressed: () {
-                                                Navigator.push(context, MaterialPageRoute(builder: (context) => const Login()));
+                                                Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                        builder: (context) =>
+                                                            const Login()));
                                               },
                                               style: ElevatedButton.styleFrom(
-                                                padding: const EdgeInsets.all(16),
-                                                foregroundColor: AppConfig.appSecondaryTheme,
+                                                padding:
+                                                    const EdgeInsets.all(16),
+                                                foregroundColor:
+                                                    AppConfig.appSecondaryTheme,
                                                 shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(5),
+                                                  borderRadius:
+                                                      BorderRadius.circular(5),
                                                 ),
                                               ),
                                               child: Container(
                                                 alignment: Alignment.center,
                                                 child: const Text(
                                                   'GO BACK TO LOG IN',
-                                                  style: TextStyle(fontFamily: 'Futura', color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                                                  style: TextStyle(
+                                                      fontFamily: 'Futura',
+                                                      color: Colors.white,
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.w600),
                                                 ),
                                                 width: double.infinity,
                                               ),
@@ -376,14 +727,18 @@ class StudentRegistrationState extends State<StudentRegistration> {
                                   ],
                                 );
                               },
-                            );
+                            ).then((_) {
+                              // Optionally, you can put this outside the showDialog to reset the form.
+                              _formKey.currentState?.reset();
+                            });
                           } on FirebaseAuthException catch (exception) {
                             if (exception.code == 'email-already-in-use') {
                               setState(() {
                                 isRegistering = false;
                               });
 
-                              Fluttertoast.showToast(msg: 'Email is already registered');
+                              Fluttertoast.showToast(
+                                  msg: 'Email is already registered');
                             } else if (exception.code == 'weak-password') {
                               setState(() {
                                 isRegistering = false;
@@ -396,31 +751,51 @@ class StudentRegistrationState extends State<StudentRegistration> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.all(16),
-                      foregroundColor: AppConfig.appSecondaryTheme,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5),
-                      ),
+                      padding: EdgeInsets.all(16),
+                      // Set a fixed width to ensure consistent button width
+                      minimumSize: Size(double.infinity, 50),
+                      // Your existing button style...
                     ),
-                    child: Container(
-                      alignment: Alignment.center,
-                      child: const Text(
-                        'REGISTER',
-                        style: TextStyle(fontFamily: 'Futura', color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-                      ),
-                      width: double.infinity,
-                    ),
+                    child: isRegistering
+                        ? SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : Container(
+                            alignment: Alignment.center,
+                            child: Text(
+                              'REGISTER',
+                              style: TextStyle(
+                                fontFamily: 'Futura',
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            width: double.infinity,
+                          ),
                   ),
                   Container(
                     padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
                     width: double.infinity,
                     child: OutlinedButton(
                       onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => const Login()));
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const Login()));
                       },
                       child: const Text(
                         'LOG IN INSTEAD',
-                        style: TextStyle(fontFamily: 'Futura', color: AppConfig.appSecondaryTheme, fontSize: 16, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                            fontFamily: 'Futura',
+                            color: AppConfig.appSecondaryTheme,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600),
                       ),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.all(16),

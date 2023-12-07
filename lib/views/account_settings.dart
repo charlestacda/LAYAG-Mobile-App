@@ -446,8 +446,7 @@ class _AccountSettingsState extends State<_AccountSettings> {
                       } else {
                         showDialog(
                           context: context,
-                          barrierDismissible:
-                              false, // Disable dismissing the dialog
+                          barrierDismissible: false,
                           builder: (BuildContext context) {
                             return StatefulBuilder(
                               builder: (BuildContext context, setState) {

@@ -65,7 +65,7 @@ dependencies:
   image_cropper: ^1.4.0
   permission_handler: ^11.1.0
   cached_network_image: ^3.3.0
-  flutter_markdown: ^0.6.18+2
+  flutter_markdown: ^0.6.4
   
 
 
@@ -153,28 +153,28 @@ flutter_icons:
   android: 'launcher_icon'
   ios: true
   remove_alpha_ios: true
-  image_path: 'assets/icons/lpu-app.png'
+  image_path: 'assets/icons/layag_icon.png'
   adaptive_icon_background: '#ffffff'
   adaptive_icon_foreground: 'assets/icons/layag_icon.png'
   min_sdk_android: 21
   web:
     generate: true
-    image_path: 'assets/icons/lpu-app.png'
+    image_path: 'assets/icons/layag_icon.png'
     background_color: '#8c0001'
     theme_color: '#8c0001'
   windows:
     generate: true
-    image_path: 'assets/icons/lpu-app.png'
+    image_path: 'assets/icons/layag_icon.png'
     icon_size: 48
   macos:
     generate: true
-    image_path: 'assets/icons/lpu-app.png'
+    image_path: 'assets/icons/layag_icon.png'
 
 flutter_native_splash:
   color: "#ffffff"
-  image:  assets/icons/layag_app_big.png
+  image:  assets/icons/layag_icon.png
   color_dark: "#ffffff"
-  image_dark:  assets/icons/layag_app_big.png
+  image_dark:  assets/icons/layag_icon.png
 
   android_12:
     color: "#ffffff"
