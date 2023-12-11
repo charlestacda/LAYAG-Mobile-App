@@ -31,7 +31,7 @@ dependencies:
     sdk: flutter
   syncfusion_flutter_pdfviewer: ^20.4.54
   flutter_svg: ^2.0.5
-  shared_preferences: ^2.0.7
+  shared_preferences: ^2.2.2
   http: ^0.13.3
   provider: ^5.0.0
 
@@ -61,12 +61,15 @@ dependencies:
   percent_indicator: ^4.2.3
   curved_navigation_bar: ^1.0.3
   cloud_firestore: ^4.13.2
-  timezone: ^0.7.0
+  timezone: 0.9.2
   image_cropper: ^1.4.0
   permission_handler: ^11.1.0
   cached_network_image: ^3.3.0
   flutter_markdown: ^0.6.4
-  
+  firebase_in_app_messaging: ^0.7.4+8
+  awesome_notifications: ^0.8.2
+  workmanager: ^0.5.2
+  logger: ^2.0.2+1
 
 
 dev_dependencies:
@@ -172,15 +175,15 @@ flutter_icons:
 
 flutter_native_splash:
   color: "#ffffff"
-  image:  assets/icons/layag_icon.png
+  image:  assets/icons/layag-splash-screen.png
   color_dark: "#ffffff"
-  image_dark:  assets/icons/layag_icon.png
+  image_dark:  assets/icons/layag-splash-screen.png
 
   android_12:
     color: "#ffffff"
-    image: assets/icons/layag_icon.png
+    image: assets/icons/layag-splash-screen-android-12.png
     icon_background_color: '#ffffff'
-    image_dark: assets/icons/layag_icon.png
+    image_dark: assets/icons/layag-splash-screen-android-12.png
     icon_background_color_dark: '#ffffff'
   
   web: false

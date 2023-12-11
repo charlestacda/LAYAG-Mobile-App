@@ -11,6 +11,7 @@ import 'package:lpu_app/views/components/app_drawer.dart';
 import 'package:lpu_app/views/contact_info.dart';
 import 'package:lpu_app/views/help.dart';
 import 'package:lpu_app/views/payment_procedures.dart';
+import 'package:lpu_app/views/todo.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lpu_app/views/borrow_return.dart';
@@ -40,6 +41,7 @@ class HomeState extends State<Home> {
   late List<Portal> portals = [];
   StreamSubscription<QuerySnapshot>? portalsSubscription;
   DateTime lastCacheRefresh = DateTime(0);
+  late Timer _timer;
 
   @override
   void initState() {
@@ -48,6 +50,8 @@ class HomeState extends State<Home> {
 
     fetchUserType(); 
   }
+
+  
 
   Future<void> fetchUserType() async {
   final user = FirebaseAuth.instance.currentUser;
@@ -135,7 +139,7 @@ Future<void> fetchTips(String userType) async {
 Future<void> fetchPortals(String userType) async {
   try {
     portalsSubscription = FirebaseFirestore.instance.collection('portals')
-        .orderBy('dateEdited', descending: false)
+        .orderBy('dateAdded', descending: false)
         .snapshots()
         .listen((querySnapshot) {
       List<Portal> fetchedPortals = [];

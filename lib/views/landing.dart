@@ -17,12 +17,17 @@ class LandingState extends State<Landing> {
       body: StreamBuilder<User?>(
           stream: FirebaseAuth.instance.authStateChanges(),
           builder: (context, snapshot) {
-            if (snapshot.hasData) {
-              return const AccountVerification();
-            } else {
-              return const Login();
-            }
-          }),
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            // While waiting for the authentication state, display a loader or splash screen
+            return CircularProgressIndicator();
+          } else if (snapshot.hasData && snapshot.data != null) {
+            // If user data is available, navigate to the AccountVerification screen
+            return const AccountVerification();
+          } else {
+            // If no user data is available, navigate to the Login screen
+            return const Login();
+          } },
+      ),
     );
   }
 }

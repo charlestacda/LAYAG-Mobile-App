@@ -140,17 +140,44 @@ class NotificationsState extends State<Notifications> {
                                 final userID = user.uid;
 
                                 try {
-                                  await FirebaseFirestore.instance
-                                      .collection('users')
-                                      .doc(userID)
-                                      .update({
-                                    'Notifications.${notifList[index].notifName}':
-                                        FieldValue.delete(),
-                                  });
+                                  final documentSnapshot =
+                                      await FirebaseFirestore.instance
+                                          .collection('users')
+                                          .doc(userID)
+                                          .get();
 
-                                  setState(() {
-                                    notifList.removeAt(index);
-                                  });
+                                  if (documentSnapshot.exists) {
+                                    final data = documentSnapshot.data();
+                                    if (data != null &&
+                                        data.containsKey('Notifications')) {
+                                      final notifications =
+                                          data['Notifications']
+                                              as Map<String, dynamic>;
+
+                                      MapEntry<String, dynamic>? foundKey;
+                                      for (var entry in notifications.entries) {
+                                        if (entry.value['notifTitle'] ==
+                                            notifList[index].notifTitle) {
+                                          foundKey = entry;
+                                          break;
+                                        }
+                                      }
+
+                                      if (foundKey != null) {
+                                        await FirebaseFirestore.instance
+                                            .collection('users')
+                                            .doc(userID)
+                                            .update({
+                                          'Notifications.${foundKey.key}':
+                                              FieldValue.delete(),
+                                        });
+
+                                        setState(() {
+                                          notifList.removeAt(index);
+                                        });
+                                      }
+                                    }
+                                  }
                                 } catch (e) {
                                   print('Error deleting notification: $e');
                                   // Handle error as needed
@@ -170,44 +197,53 @@ class NotificationsState extends State<Notifications> {
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
         floatingActionButton: SizedBox(
-          width: 500,
-          height: 55,
-          child: FloatingActionButton(
-            child: const Text('CLEAR ALL',
+          width: 300,
+          height: 100,
+          child: Container(
+            margin:
+                EdgeInsets.only(bottom: 40), // Moves the button a bit higher
+            child: FloatingActionButton(
+              child: const Text(
+                'CLEAR ALL',
                 style: TextStyle(
-                    fontFamily: 'Futura',
-                    color: Color(0xffA62D38),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600)),
-            onPressed: () async {
-              final user = FirebaseAuth.instance.currentUser;
-              if (user != null) {
-                final userID = user.uid;
+                  fontFamily: 'Futura',
+                  color: AppConfig.appWhiteAlphaTheme,
+                  fontSize: 14, // Reduced font size
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              onPressed: () async {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user != null) {
+                  final userID = user.uid;
 
-                try {
-                  await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(userID)
-                      .update({
-                    'Notifications': {}, // Clear the Notifications map
-                  });
+                  try {
+                    await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(userID)
+                        .update({
+                      'Notifications': {}, // Clear the Notifications map
+                    });
 
-                  setState(() {
-                    notifList.clear(); // Clear the local list of notifications
-                  });
-                } catch (e) {
-                  print('Error clearing notifications: $e');
-                  // Handle error as needed
+                    setState(() {
+                      notifList
+                          .clear(); // Clear the local list of notifications
+                    });
+                  } catch (e) {
+                    print('Error clearing notifications: $e');
+                    // Handle error as needed
+                  }
                 }
-              }
-            },
-            shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(5)),
+              },
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(5),
                 side: BorderSide(
                   width: 2,
-                  color: Color(0xffA62D38),
-                )),
-            backgroundColor: Colors.white,
+                  color: AppConfig.appSecondaryTheme,
+                ),
+              ),
+              backgroundColor: AppConfig.appSecondaryTheme,
+            ),
           ),
         ),
       );

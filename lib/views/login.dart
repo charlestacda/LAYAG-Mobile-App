@@ -22,14 +22,17 @@ class LoginState extends State<Login> {
   TextEditingController userPass = TextEditingController();
 
   bool isLoggingIn = false;
+  bool _isMounted = false;
 
   @override
   initState() {
     super.initState();
+    _isMounted = true;
   }
 
   @override
   void dispose() {
+    _isMounted = false;
     userEmail.dispose();
     userPass.dispose();
     super.dispose();
@@ -39,6 +42,17 @@ class LoginState extends State<Login> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.setBool('dialogShown', false);
   }
+
+  void _updateLoginState(bool loggingIn) {
+  if (_isMounted) {
+    if (!mounted) return; // Check if the widget is still mounted
+
+    setState(() {
+      isLoggingIn = loggingIn;
+    });
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -204,7 +218,7 @@ class LoginState extends State<Login> {
                                 }
 
                                 setState(() {
-                                  isLoggingIn = true;
+                                  _updateLoginState(true);
                                 });
 
                                 await FirebaseAuth.instance
@@ -238,7 +252,7 @@ class LoginState extends State<Login> {
                                                     const Landing()));
                                       } else {
                                         setState(() {
-                                          isLoggingIn = false;
+                                          _updateLoginState(false);
                                         });
 
                                         Fluttertoast.showToast(
@@ -246,7 +260,7 @@ class LoginState extends State<Login> {
                                       }
                                     } else {
                                       setState(() {
-                                        isLoggingIn = false;
+                                        _updateLoginState(false);
                                       });
 
                                       Fluttertoast.showToast(
@@ -254,7 +268,7 @@ class LoginState extends State<Login> {
                                     }
                                   }).catchError((error) {
                                     setState(() {
-                                      isLoggingIn = false;
+                                      _updateLoginState(false);
                                     });
 
                                     Fluttertoast.showToast(
@@ -263,7 +277,7 @@ class LoginState extends State<Login> {
                                   });
                                 } else {
                                   setState(() {
-                                    isLoggingIn = false;
+                                    _updateLoginState(false);
                                   });
 
                                   Fluttertoast.showToast(
@@ -272,20 +286,20 @@ class LoginState extends State<Login> {
                               } on FirebaseAuthException catch (exception) {
                                 if (exception.code == 'user-not-found') {
                                   setState(() {
-                                    isLoggingIn = false;
+                                    _updateLoginState(false);
                                   });
 
                                   Fluttertoast.showToast(
                                       msg: 'User cannot be found');
                                 } else if (exception.code == 'wrong-password') {
                                   setState(() {
-                                    isLoggingIn = false;
+                                    _updateLoginState(false);
                                   });
 
                                   Fluttertoast.showToast(msg: 'Wrong Password');
                                 } else {
                                   setState(() {
-                                    isLoggingIn = false;
+                                    _updateLoginState(false);
                                   });
 
                                   Fluttertoast.showToast(
@@ -294,7 +308,7 @@ class LoginState extends State<Login> {
                                 }
                               } catch (error) {
                                 setState(() {
-                                  isLoggingIn = false;
+                                  _updateLoginState(false);
                                 });
 
                                 Fluttertoast.showToast(
@@ -369,4 +383,6 @@ class LoginState extends State<Login> {
       ),
     ));
   }
+
+
 }
