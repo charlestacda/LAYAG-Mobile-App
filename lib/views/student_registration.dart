@@ -49,6 +49,14 @@ class StudentRegistrationState extends State<StudentRegistration> {
 
   List<bool> fieldEmpty = List.filled(7, true);
 
+  String idErr = " *Student ID is required";
+  String emailErr = " *Email is required";
+  String passErr = " *Password is required";
+  String confErr = " *Must re-enter password";
+  String fnameErr = " *First name is required";
+  String lnameErr = " *Last name is required";
+  String collErr = " *Must select college department";
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -95,6 +103,13 @@ class StudentRegistrationState extends State<StudentRegistration> {
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
+                    keyboardType: TextInputType.text,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(
+                            r'[a-zA-Z0-9\-]'), // Allow letters, numbers, and "-"
+                      ),
+                    ],
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8.0),
@@ -125,23 +140,38 @@ class StudentRegistrationState extends State<StudentRegistration> {
                       });
                     },
                   ),
+                  SizedBox(height: 5), // Adjust spacing as needed
+                  Visibility(
+                    visible: fieldEmpty[0],
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        idErr,
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   TextFormField(
+                    inputFormatters: [
+                      FilteringTextInputFormatter.deny(RegExp(
+                          r'\s')), // Deny spaces and white space characters
+                    ],
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8.0),
                         borderSide: BorderSide(
-                          color: Colors.grey, // Default border color
+                          color: Colors.grey,
                           width: 1.0,
                         ),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8.0),
                         borderSide: BorderSide(
-                          color: fieldEmpty[1]
-                              ? Colors.red
-                              : Colors
-                                  .grey, // Change border color based on condition
+                          color: fieldEmpty[1] ? Colors.red : Colors.grey,
                           width: 1.0,
                         ),
                       ),
@@ -149,13 +179,36 @@ class StudentRegistrationState extends State<StudentRegistration> {
                       suffixIcon: fieldEmpty[1]
                           ? Icon(Icons.error_outline, color: Colors.red)
                           : null,
+                      suffixText: '@lpunetwork.edu.ph',
+                      suffixStyle: TextStyle(
+                          color: Colors
+                              .black, // You can change the color if needed
+                          fontSize: 16 // Adjust font weight as desired
+                          ),
+                      contentPadding: EdgeInsets.symmetric(
+                          vertical: 12.0,
+                          horizontal: 16.0), // Adjust padding as needed
                     ),
                     onChanged: (value) {
                       setState(() {
                         fieldEmpty[1] = value.isEmpty;
-                        studentEmail.text = value;
+                        studentEmail.text = value + '@lpunetwork.edu.ph';
                       });
                     },
+                  ),
+                  SizedBox(height: 5), // Adjust spacing as needed
+                  Visibility(
+                    visible: fieldEmpty[1],
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        emailErr,
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -234,6 +287,20 @@ class StudentRegistrationState extends State<StudentRegistration> {
                         }
                       });
                     },
+                  ),
+                  SizedBox(height: 5), // Adjust spacing as needed
+                  Visibility(
+                    visible: fieldEmpty[2],
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        passErr,
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 13),
                   Row(
@@ -457,6 +524,20 @@ class StudentRegistrationState extends State<StudentRegistration> {
                       });
                     },
                   ),
+                  SizedBox(height: 5), // Adjust spacing as needed
+                  Visibility(
+                    visible: fieldEmpty[3],
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        confErr,
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   TextFormField(
                     decoration: InputDecoration(
@@ -482,12 +563,46 @@ class StudentRegistrationState extends State<StudentRegistration> {
                           ? Icon(Icons.error_outline, color: Colors.red)
                           : null,
                     ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(
+                          r"[A-Za-z\s\W]+")), // Allow letters, spaces, and special characters
+                      TextInputFormatter.withFunction((oldValue, newValue) {
+                        if (newValue.text.isNotEmpty) {
+                          // Capitalize the first letter of each word
+                          return TextEditingValue(
+                            text: newValue.text.split(' ').map((word) {
+                              if (word.isNotEmpty) {
+                                return word[0].toUpperCase() +
+                                    word.substring(1).toLowerCase();
+                              }
+                              return '';
+                            }).join(' '),
+                            selection: newValue.selection,
+                          );
+                        }
+                        return newValue;
+                      }),
+                    ],
                     onChanged: (value) {
                       setState(() {
                         fieldEmpty[4] = value.isEmpty;
                         studentFName.text = value;
                       });
                     },
+                  ),
+                  SizedBox(height: 5), // Adjust spacing as needed
+                  Visibility(
+                    visible: fieldEmpty[4],
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        fnameErr,
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -514,12 +629,46 @@ class StudentRegistrationState extends State<StudentRegistration> {
                           ? Icon(Icons.error_outline, color: Colors.red)
                           : null,
                     ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(
+                          r"[A-Za-z\s\W]+")), // Allow letters, spaces, and special characters
+                      TextInputFormatter.withFunction((oldValue, newValue) {
+                        if (newValue.text.isNotEmpty) {
+                          // Capitalize the first letter of each word
+                          return TextEditingValue(
+                            text: newValue.text.split(' ').map((word) {
+                              if (word.isNotEmpty) {
+                                return word[0].toUpperCase() +
+                                    word.substring(1).toLowerCase();
+                              }
+                              return '';
+                            }).join(' '),
+                            selection: newValue.selection,
+                          );
+                        }
+                        return newValue;
+                      }),
+                    ],
                     onChanged: (value) {
                       setState(() {
                         fieldEmpty[5] = value.isEmpty;
                         studentLName.text = value;
                       });
                     },
+                  ),
+                  SizedBox(height: 5), // Adjust spacing as needed
+                  Visibility(
+                    visible: fieldEmpty[5],
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        lnameErr,
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Container(
@@ -563,6 +712,20 @@ class StudentRegistrationState extends State<StudentRegistration> {
                       ),
                     ),
                   ),
+                  SizedBox(height: 5), // Adjust spacing as needed
+                  Visibility(
+                    visible: fieldEmpty[6],
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        collErr,
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   Row(children: [
                     IconButton(
@@ -596,21 +759,25 @@ class StudentRegistrationState extends State<StudentRegistration> {
                   ElevatedButton(
                     onPressed: () async {
                       if (!isRegistering) {
-                        if (studentNumber.text.isEmpty ||
-                            studentEmail.text.isEmpty ||
-                            studentPassword.text.isEmpty ||
-                            studentConfirmPassword.text.isEmpty ||
-                            studentFName.text.isEmpty ||
-                            studentLName.text.isEmpty ||
-                            studentCollege.text.isEmpty) {
+                        if (studentNumber.text.isEmpty) {
                           Fluttertoast.showToast(
-                            msg: 'Fill all the fields.',
+                            msg: 'Student ID is required',
+                            fontSize: 16,
+                          );
+                        } else if (studentEmail.text.isEmpty) {
+                          Fluttertoast.showToast(
+                            msg: 'Email is required',
                             fontSize: 16,
                           );
                         } else if (!RegExp(r'\S+@lpunetwork.edu.ph')
                             .hasMatch(studentEmail.text)) {
                           Fluttertoast.showToast(
                             msg: 'Invalid Email Address.',
+                            fontSize: 16,
+                          );
+                        } else if (studentPassword.text.isEmpty) {
+                          Fluttertoast.showToast(
+                            msg: 'Password is required',
                             fontSize: 16,
                           );
                         } else if (studentPassword.text !=
@@ -625,10 +792,24 @@ class StudentRegistrationState extends State<StudentRegistration> {
                             msg: 'Password is weak',
                             fontSize: 16,
                           );
-                        } else if (!isPrivacyPolicyChecked) {
-                          // Check if Privacy Policy is checked
+                        } else if (studentFName.text.isEmpty) {
                           Fluttertoast.showToast(
-                            msg: 'Please agree to the Privacy Policy',
+                            msg: 'First name is required',
+                            fontSize: 16,
+                          );
+                        } else if (studentLName.text.isEmpty) {
+                          Fluttertoast.showToast(
+                            msg: 'Last name is required',
+                            fontSize: 16,
+                          );
+                        } else if (studentCollege.text.isEmpty) {
+                          Fluttertoast.showToast(
+                            msg: 'Must select college department',
+                            fontSize: 16,
+                          );
+                        } else if (!isPrivacyPolicyChecked) {
+                          Fluttertoast.showToast(
+                            msg: 'Need to agree with Privacy Policy',
                             fontSize: 16,
                           );
                         } else {

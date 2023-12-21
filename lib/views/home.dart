@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:lpu_app/config/app_config.dart';
@@ -19,10 +20,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:lpu_app/models/portal_model.dart';
 import 'package:lpu_app/models/tip_model.dart';
+import 'package:lpu_app/utilities/webviewer.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
-
-
 
 class Home extends StatefulWidget {
   const Home({Key? key}) : super(key: key);
@@ -42,154 +42,152 @@ class HomeState extends State<Home> {
   StreamSubscription<QuerySnapshot>? portalsSubscription;
   DateTime lastCacheRefresh = DateTime(0);
   late Timer _timer;
+  final FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
   @override
   void initState() {
     super.initState();
     randomNumber = random.nextInt(8);
 
-    fetchUserType(); 
+    fetchUserType();
   }
-
-  
 
   Future<void> fetchUserType() async {
-  final user = FirebaseAuth.instance.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
 
-  if (user != null) {
-  final userReference = FirebaseFirestore.instance.collection('users').doc(user.uid);
-  
-  try {
-    DocumentSnapshot snapshot = await userReference.get();
+    if (user != null) {
+      final userReference =
+          FirebaseFirestore.instance.collection('users').doc(user.uid);
 
-    if (snapshot.exists) {
-      final userData = snapshot.data() as Map<String, dynamic>;
-      final String fetchedUserType = userData['userType'] ?? '';
+      try {
+        DocumentSnapshot snapshot = await userReference.get();
 
-      Provider.of<UserTypeProvider>(context, listen: false)
-          .setUserType(fetchedUserType);
+        if (snapshot.exists) {
+          final userData = snapshot.data() as Map<String, dynamic>;
+          final String fetchedUserType = userData['userType'] ?? '';
 
-      fetchTips(fetchedUserType);
-      fetchPortals(fetchedUserType);
-    } else {
-      // Handle case where user document doesn't exist
+          Provider.of<UserTypeProvider>(context, listen: false)
+              .setUserType(fetchedUserType);
+
+          fetchTips(fetchedUserType);
+          fetchPortals(fetchedUserType);
+        } else {
+          // Handle case where user document doesn't exist
+        }
+      } catch (e) {
+        // Handle exceptions, such as FirestoreError, if any
+        print('Error fetching user data: $e');
+      }
     }
-  } catch (e) {
-    // Handle exceptions, such as FirestoreError, if any
-    print('Error fetching user data: $e');
   }
-}
 
-}
-
-
-Future<void> fetchTips(String userType) async {
-  try {
-    if (userType == 'Admin') {
-      setState(() {
-        randomTip = 'Welcome Admin!';
-        checkAndShowDialog();
-      });
-    } else {
-      final QuerySnapshot<Map<String, dynamic>> snapshot =
-          await FirebaseFirestore.instance.collection('tips').get();
-
-      if (snapshot.docs.isNotEmpty) {
-        final List<QueryDocumentSnapshot<Map<String, dynamic>>> documents =
-            snapshot.docs.toList();
-
-        List<String> fetchedTipsList = documents
-            .where((doc) {
-              final bool visibleToStudents = doc['visibleToStudents'] ?? false;
-              final bool visibleToEmployees = doc['visibleToEmployees'] ?? false;
-              final bool archived = doc['archived'] ?? false;
-
-              if (userType == 'Student') {
-                return visibleToStudents && !archived;
-              } else if (userType == 'Faculty') {
-                return visibleToEmployees && !archived;
-              }
-
-              return false;
-            })
-            .map((doc) => Tip.fromFirestore(doc).content)
-            .toList();
-
+  Future<void> fetchTips(String userType) async {
+    try {
+      if (userType == 'Admin') {
         setState(() {
-          fetchedTips = fetchedTipsList;
-
-          if (fetchedTips.isNotEmpty) {
-            int randomIndex = random.nextInt(fetchedTips.length);
-            randomTip = fetchedTips[randomIndex];
-
-            // Call checkAndShowDialog here, as data has been fetched successfully
-            checkAndShowDialog();
-          }
+          randomTip = 'Welcome Admin!';
+          checkAndShowDialog();
         });
       } else {
-        print('No tips available in the collection.');
+        final QuerySnapshot<Map<String, dynamic>> snapshot =
+            await FirebaseFirestore.instance.collection('tips').get();
+
+        if (snapshot.docs.isNotEmpty) {
+          final List<QueryDocumentSnapshot<Map<String, dynamic>>> documents =
+              snapshot.docs.toList();
+
+          List<String> fetchedTipsList = documents
+              .where((doc) {
+                final bool visibleToStudents =
+                    doc['visibleToStudents'] ?? false;
+                final bool visibleToEmployees =
+                    doc['visibleToEmployees'] ?? false;
+                final bool archived = doc['archived'] ?? false;
+
+                if (userType == 'Student') {
+                  return visibleToStudents && !archived;
+                } else if (userType == 'Faculty') {
+                  return visibleToEmployees && !archived;
+                }
+
+                return false;
+              })
+              .map((doc) => Tip.fromFirestore(doc).content)
+              .toList();
+
+          setState(() {
+            fetchedTips = fetchedTipsList;
+
+            if (fetchedTips.isNotEmpty) {
+              int randomIndex = random.nextInt(fetchedTips.length);
+              randomTip = fetchedTips[randomIndex];
+
+              // Call checkAndShowDialog here, as data has been fetched successfully
+              checkAndShowDialog();
+            }
+          });
+        } else {
+          print('No tips available in the collection.');
+        }
       }
+    } catch (e) {
+      print('Error fetching tips: $e');
     }
-  } catch (e) {
-    print('Error fetching tips: $e');
   }
-}
 
+  Future<void> fetchPortals(String userType) async {
+    try {
+      portalsSubscription = FirebaseFirestore.instance
+          .collection('portals')
+          .orderBy('dateAdded', descending: false)
+          .snapshots()
+          .listen((querySnapshot) {
+        List<Portal> fetchedPortals = [];
 
-Future<void> fetchPortals(String userType) async {
-  try {
-    portalsSubscription = FirebaseFirestore.instance.collection('portals')
-        .orderBy('dateAdded', descending: false)
-        .snapshots()
-        .listen((querySnapshot) {
-      List<Portal> fetchedPortals = [];
+        for (final doc in querySnapshot.docs) {
+          bool visibleToUser = false;
+          bool archived = doc['archived'];
 
-      for (final doc in querySnapshot.docs) {
-        bool visibleToUser = false;
-        bool archived = doc['archived'];
+          if (userType == 'Student') {
+            visibleToUser = !archived && doc['visibleToStudents'];
+          } else if (userType == 'Faculty') {
+            visibleToUser = !archived && doc['visibleToEmployees'];
+          } else if (userType == 'Admin') {
+            visibleToUser = true; // Admin has access to all portals
+          }
 
-        if (userType == 'Student') {
-          visibleToUser = !archived && doc['visibleToStudents'];
-        } else if (userType == 'Faculty') {
-          visibleToUser = !archived && doc['visibleToEmployees'];
-        } else if (userType == 'Admin') {
-          visibleToUser = true; // Admin has access to all portals
+          if (visibleToUser) {
+            fetchedPortals.add(Portal(
+              id: doc.id,
+              title: doc['title'],
+              link: doc['link'],
+              color: doc['color'],
+              imageUrl: doc['imageUrl'],
+              dateAdded: (doc['dateAdded'] as Timestamp).toDate(),
+              dateEdited: (doc['dateEdited'] as Timestamp).toDate(),
+              visibleToEmployees: doc['visibleToEmployees'],
+              visibleToStudents: doc['visibleToStudents'],
+              archived: archived,
+            ));
+          }
         }
 
-        if (visibleToUser) {
-          fetchedPortals.add(Portal(
-            id: doc.id,
-            title: doc['title'],
-            link: doc['link'],
-            color: doc['color'],
-            imageUrl: doc['imageUrl'],
-            dateAdded: (doc['dateAdded'] as Timestamp).toDate(),
-            dateEdited: (doc['dateEdited'] as Timestamp).toDate(),
-            visibleToEmployees: doc['visibleToEmployees'],
-            visibleToStudents: doc['visibleToStudents'],
-            archived: archived,
-          ));
-        }
-      }
-
-      setState(() {
-        portals = fetchedPortals;
+        setState(() {
+          portals = fetchedPortals;
+        });
       });
-    });
-  } catch (e) {
-    print('Error fetching portals: $e');
+    } catch (e) {
+      print('Error fetching portals: $e');
+    }
   }
-}
 
+  @override
+  void dispose() {
+    portalsSubscription?.cancel();
+    super.dispose();
+  }
 
-
-@override
-void dispose() {
-  portalsSubscription?.cancel();
-  super.dispose();
-}
-
-void checkAndShowDialog() async {
+  void checkAndShowDialog() async {
     // Get the shared preferences instance
     SharedPreferences prefs = await SharedPreferences.getInstance();
     // Check if the dialog has been shown before
@@ -221,8 +219,16 @@ void checkAndShowDialog() async {
             ),
           );
         },
-      );          
+      );
       prefs.setBool('dialogShown', true);
+      analytics.setAnalyticsCollectionEnabled(true);
+
+      analytics.logEvent(
+        name: 'show_dialog',
+        parameters: <String, dynamic>{
+          'dialog_shown': randomTip,
+        },
+      );
     }
   }
 
@@ -249,7 +255,8 @@ void checkAndShowDialog() async {
           IconButton(
             icon: const Icon(Icons.help_outline),
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const Help()));
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => const Help()));
             },
           ),
         ],
@@ -271,13 +278,20 @@ void checkAndShowDialog() async {
                 crossAxisCount: 2,
                 crossAxisSpacing: 4.0,
                 mainAxisSpacing: 8.0,
-                shrinkWrap: true, // Added this to allow content to wrap its height
+                shrinkWrap:
+                    true, // Added this to allow content to wrap its height
                 children: portals.map((portal) {
-                  Color cardColor = Color(int.parse(portal.color.replaceAll("#", "0xFF")));
+                  Color cardColor =
+                      Color(int.parse(portal.color.replaceAll("#", "0xFF")));
                   return GestureDetector(
                     onTap: () {
-                      // Open the portal link
-                      URL.launch(portal.link);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              WebViewer(initialUrl: portal.link),
+                        ),
+                      );
                     },
                     child: Card(
                       shape: RoundedRectangleBorder(
@@ -295,14 +309,15 @@ void checkAndShowDialog() async {
                             children: <Widget>[
                               Expanded(
                                 child: portal.imageUrl.isNotEmpty
-                                  ? Image.network(
-                                      portal.imageUrl,
-                                      fit: BoxFit.contain,
-                                      errorBuilder: (_, __, ___) {
-                                        return const Text('Image unavailable');
-                                      },
-                                    )
-                                  : const SizedBox(), // Check if img is empty
+                                    ? Image.network(
+                                        portal.imageUrl,
+                                        fit: BoxFit.contain,
+                                        errorBuilder: (_, __, ___) {
+                                          return const Text(
+                                              'Image unavailable');
+                                        },
+                                      )
+                                    : const SizedBox(), // Check if img is empty
                               ),
                               const SizedBox(height: 16),
                               Text(

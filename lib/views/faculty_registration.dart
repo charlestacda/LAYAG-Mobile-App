@@ -49,6 +49,14 @@ class FacultyRegistrationState extends State<FacultyRegistration> {
 
   List<bool> fieldEmpty = List.filled(7, true);
 
+  String facidErr = " *Employee ID is required";
+  String facemailErr = " *Email is required";
+  String facpassErr = " *Password is required";
+  String facconfErr = " *Must re-enter password";
+  String facfnameErr = " *First name is required";
+  String faclnameErr = " *Last name is required";
+  String faccollErr = " *Must select college department";
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -93,6 +101,13 @@ class FacultyRegistrationState extends State<FacultyRegistration> {
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
+                    keyboardType: TextInputType.text,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(
+                            r'[a-zA-Z0-9\-]'), // Allow letters, numbers, and "-"
+                      ),
+                    ],
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8.0),
@@ -123,23 +138,37 @@ class FacultyRegistrationState extends State<FacultyRegistration> {
                       });
                     },
                   ),
+                  Visibility(
+                    visible: fieldEmpty[0],
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        facidErr,
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   TextFormField(
+                    inputFormatters: [
+                      FilteringTextInputFormatter.deny(RegExp(
+                          r'\s')), // Deny spaces and white space characters
+                    ],
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8.0),
                         borderSide: BorderSide(
-                          color: Colors.grey, // Default border color
+                          color: Colors.grey,
                           width: 1.0,
                         ),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8.0),
                         borderSide: BorderSide(
-                          color: fieldEmpty[1]
-                              ? Colors.red
-                              : Colors
-                                  .grey, // Change border color based on condition
+                          color: fieldEmpty[1] ? Colors.red : Colors.grey,
                           width: 1.0,
                         ),
                       ),
@@ -147,13 +176,35 @@ class FacultyRegistrationState extends State<FacultyRegistration> {
                       suffixIcon: fieldEmpty[1]
                           ? Icon(Icons.error_outline, color: Colors.red)
                           : null,
+                      suffixText: '@lpu.edu.ph',
+                      suffixStyle: TextStyle(
+                          color: Colors
+                              .black, // You can change the color if needed
+                          fontSize: 16 // Adjust font weight as desired
+                          ),
+                      contentPadding: EdgeInsets.symmetric(
+                          vertical: 12.0,
+                          horizontal: 16.0), // Adjust padding as needed
                     ),
                     onChanged: (value) {
                       setState(() {
                         fieldEmpty[1] = value.isEmpty;
-                        facultyEmail.text = value;
+                        facultyEmail.text = value + '@lpu.edu.ph';
                       });
                     },
+                  ),
+                  Visibility(
+                    visible: fieldEmpty[1],
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        facemailErr,
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -232,6 +283,19 @@ class FacultyRegistrationState extends State<FacultyRegistration> {
                         }
                       });
                     },
+                  ),
+                  Visibility(
+                    visible: fieldEmpty[2],
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        facpassErr,
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 13),
                   Row(
@@ -455,6 +519,19 @@ class FacultyRegistrationState extends State<FacultyRegistration> {
                       });
                     },
                   ),
+                  Visibility(
+                    visible: fieldEmpty[3],
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        facconfErr,
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   TextFormField(
                     decoration: InputDecoration(
@@ -480,12 +557,45 @@ class FacultyRegistrationState extends State<FacultyRegistration> {
                           ? Icon(Icons.error_outline, color: Colors.red)
                           : null,
                     ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(
+                          r"[A-Za-z\s\W]+")), // Allow letters, spaces, and special characters
+                      TextInputFormatter.withFunction((oldValue, newValue) {
+                        if (newValue.text.isNotEmpty) {
+                          // Capitalize the first letter of each word
+                          return TextEditingValue(
+                            text: newValue.text.split(' ').map((word) {
+                              if (word.isNotEmpty) {
+                                return word[0].toUpperCase() +
+                                    word.substring(1).toLowerCase();
+                              }
+                              return '';
+                            }).join(' '),
+                            selection: newValue.selection,
+                          );
+                        }
+                        return newValue;
+                      }),
+                    ],
                     onChanged: (value) {
                       setState(() {
                         fieldEmpty[4] = value.isEmpty;
                         facultyFirstName.text = value;
                       });
                     },
+                  ),
+                  Visibility(
+                    visible: fieldEmpty[4],
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        facfnameErr,
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -512,12 +622,45 @@ class FacultyRegistrationState extends State<FacultyRegistration> {
                           ? Icon(Icons.error_outline, color: Colors.red)
                           : null,
                     ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(
+                          r"[A-Za-z\s\W]+")), // Allow letters, spaces, and special characters
+                      TextInputFormatter.withFunction((oldValue, newValue) {
+                        if (newValue.text.isNotEmpty) {
+                          // Capitalize the first letter of each word
+                          return TextEditingValue(
+                            text: newValue.text.split(' ').map((word) {
+                              if (word.isNotEmpty) {
+                                return word[0].toUpperCase() +
+                                    word.substring(1).toLowerCase();
+                              }
+                              return '';
+                            }).join(' '),
+                            selection: newValue.selection,
+                          );
+                        }
+                        return newValue;
+                      }),
+                    ],
                     onChanged: (value) {
                       setState(() {
                         fieldEmpty[5] = value.isEmpty;
                         facultyLastName.text = value;
                       });
                     },
+                  ),
+                  Visibility(
+                    visible: fieldEmpty[5],
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        faclnameErr,
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Container(
@@ -561,6 +704,19 @@ class FacultyRegistrationState extends State<FacultyRegistration> {
                       ),
                     ),
                   ),
+                  Visibility(
+                    visible: fieldEmpty[6],
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        faccollErr,
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   Row(children: [
                     IconButton(
@@ -594,21 +750,25 @@ class FacultyRegistrationState extends State<FacultyRegistration> {
                   ElevatedButton(
                     onPressed: () async {
                       if (!isRegistering) {
-                        if (facultyNumber.text.isEmpty ||
-                            facultyEmail.text.isEmpty ||
-                            facultyPassword.text.isEmpty ||
-                            facultyConfirmPassword.text.isEmpty ||
-                            facultyFirstName.text.isEmpty ||
-                            facultyLastName.text.isEmpty ||
-                            facultyCollege.text.isEmpty) {
+                        if (facultyNumber.text.isEmpty) {
                           Fluttertoast.showToast(
-                            msg: 'Fill all the fields.',
+                            msg: 'Employee ID is required',
+                            fontSize: 16,
+                          );
+                        } else if (facultyEmail.text.isEmpty) {
+                          Fluttertoast.showToast(
+                            msg: 'Email is required',
                             fontSize: 16,
                           );
                         } else if (!RegExp(r'\S+@lpu.edu.ph')
                             .hasMatch(facultyEmail.text)) {
                           Fluttertoast.showToast(
                             msg: 'Invalid Email Address.',
+                            fontSize: 16,
+                          );
+                        } else if (facultyPassword.text.isEmpty) {
+                          Fluttertoast.showToast(
+                            msg: 'Password is required',
                             fontSize: 16,
                           );
                         } else if (facultyPassword.text !=
@@ -623,10 +783,25 @@ class FacultyRegistrationState extends State<FacultyRegistration> {
                             msg: 'Password is weak',
                             fontSize: 16,
                           );
+                        } else if (facultyFirstName.text.isEmpty) {
+                          Fluttertoast.showToast(
+                            msg: 'First name is required',
+                            fontSize: 16,
+                          );
+                        } else if (facultyLastName.text.isEmpty) {
+                          Fluttertoast.showToast(
+                            msg: 'Last name is required',
+                            fontSize: 16,
+                          );
+                        } else if (facultyCollege.text.isEmpty) {
+                          Fluttertoast.showToast(
+                            msg: 'Select college department',
+                            fontSize: 16,
+                          );
                         } else if (!isPrivacyPolicyChecked) {
                           // Check if Privacy Policy is checked
                           Fluttertoast.showToast(
-                            msg: 'Please agree to the Privacy Policy',
+                            msg: 'Need to agree with Privacy Policy',
                             fontSize: 16,
                           );
                         } else {

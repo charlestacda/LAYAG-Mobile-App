@@ -1,6 +1,7 @@
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:lpu_app/config/app_config.dart';
@@ -9,6 +10,8 @@ import 'package:lpu_app/views/login.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:provider/provider.dart';
+import 'firebase_options.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 
 
 
@@ -21,6 +24,10 @@ class UserTypeProvider with ChangeNotifier {
   }
 }
 
+FirebaseAnalytics analytics = FirebaseAnalytics.instance;
+FirebaseAnalyticsObserver observer = FirebaseAnalyticsObserver(analytics: analytics);
+
+
 Future<void> main() async {
   tzdata.initializeTimeZones();
   tz.setLocalLocation(tz.getLocation('Asia/Manila')); 
@@ -29,7 +36,9 @@ Future<void> main() async {
 
   await Future.delayed(const Duration(seconds: AppConfig.appSplashScreenDuration));
 
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+  options: DefaultFirebaseOptions.currentPlatform,
+);
 
   FlutterNativeSplash.remove();
   
@@ -55,6 +64,9 @@ Future<void> main() async {
       create: (context) => UserTypeProvider(),
       child: MaterialApp(
         title: AppConfig.appName,
+        navigatorObservers: [
+      observer, // Include Firebase Analytics observer in navigatorObservers
+    ],
         debugShowCheckedModeBanner: AppConfig.appDebugMode,
         // Listen to authentication state changes and navigate accordingly
         home: StreamBuilder<User?>(

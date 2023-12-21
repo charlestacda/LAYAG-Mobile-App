@@ -120,7 +120,7 @@ class LoginState extends State<Login> {
                             child: TextField(
                               controller: userEmail,
                               textAlignVertical: TextAlignVertical.center,
-                              keyboardType: TextInputType.text,
+                              keyboardType: TextInputType.emailAddress,
                               style: const TextStyle(
                                   fontFamily: 'Arial', color: Colors.black),
                               decoration: const InputDecoration(

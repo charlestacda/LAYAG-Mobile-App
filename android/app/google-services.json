@@ -15,7 +15,7 @@
       },
       "oauth_client": [
         {
-          "client_id": "157513689407-s2qfltqpghrb660bpirsi1heif9rh5ku.apps.googleusercontent.com",
+          "client_id": "157513689407-n1g6b14mnnn89lm988ojki1p205mtkne.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -28,14 +28,14 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "157513689407-s2qfltqpghrb660bpirsi1heif9rh5ku.apps.googleusercontent.com",
+              "client_id": "157513689407-n1g6b14mnnn89lm988ojki1p205mtkne.apps.googleusercontent.com",
               "client_type": 3
             },
             {
-              "client_id": "157513689407-bi3kvlerkj8dnhjkfn3pknmca8b37vi0.apps.googleusercontent.com",
+              "client_id": "157513689407-a09tcoa485ag260rs67qa83obtv27mrr.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "lpu-app-database-e0c6c"
+                "bundle_id": "com.lpudevteam.lpuApp"
               }
             }
           ]

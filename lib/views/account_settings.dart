@@ -224,23 +224,31 @@ class _AccountSettingsState extends State<_AccountSettings> {
   }
 
   Future<void> _pickAndCropImage(ImageSource source) async {
-    try {
-      final pickedFile = await ImagePicker().pickImage(source: source);
-
-      if (pickedFile != null) {
-        File? croppedFile = await _cropImage(pickedFile.path);
-        if (croppedFile != null) {
-          setState(() {
-            tempProfileImage = croppedFile;
-            isChanged = true;
-          });
-        }
-      }
-    } catch (e) {
-      print("Error picking/cropping image: $e");
-      // Handle errors as needed
+  try {
+    XFile? pickedFile;
+    
+    if (source == ImageSource.camera) {
+      pickedFile = await ImagePicker().pickImage(source: source);
+    } else {
+      pickedFile = await ImagePicker().pickImage(source: source);
     }
+
+    if (pickedFile != null) {
+      File? croppedFile = await _cropImage(pickedFile.path);
+      if (croppedFile != null) {
+        setState(() {
+          tempProfileImage = croppedFile;
+          isChanged = true;
+        });
+      }
+    }
+  } catch (e) {
+    print("Error picking/cropping image: $e");
+    // Handle errors as needed
   }
+}
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -373,6 +381,26 @@ class _AccountSettingsState extends State<_AccountSettings> {
                     TextStyle(color: AppConfig.appSecondaryTheme),
                 hintText: 'Enter your first name',
               ),
+              inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(
+                          r"[A-Za-z\s\W]+")), // Allow letters, spaces, and special characters
+                      TextInputFormatter.withFunction((oldValue, newValue) {
+                        if (newValue.text.isNotEmpty) {
+                          // Capitalize the first letter of each word
+                          return TextEditingValue(
+                            text: newValue.text.split(' ').map((word) {
+                              if (word.isNotEmpty) {
+                                return word[0].toUpperCase() +
+                                    word.substring(1).toLowerCase();
+                              }
+                              return '';
+                            }).join(' '),
+                            selection: newValue.selection,
+                          );
+                        }
+                        return newValue;
+                      }),
+                    ],
             ),
             const SizedBox(height: 20),
             TextFormField(
@@ -389,6 +417,26 @@ class _AccountSettingsState extends State<_AccountSettings> {
                     TextStyle(color: AppConfig.appSecondaryTheme),
                 hintText: 'Enter your last name',
               ),
+              inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(
+                          r"[A-Za-z\s\W]+")), // Allow letters, spaces, and special characters
+                      TextInputFormatter.withFunction((oldValue, newValue) {
+                        if (newValue.text.isNotEmpty) {
+                          // Capitalize the first letter of each word
+                          return TextEditingValue(
+                            text: newValue.text.split(' ').map((word) {
+                              if (word.isNotEmpty) {
+                                return word[0].toUpperCase() +
+                                    word.substring(1).toLowerCase();
+                              }
+                              return '';
+                            }).join(' '),
+                            selection: newValue.selection,
+                          );
+                        }
+                        return newValue;
+                      }),
+                    ],
             ),
             const SizedBox(
               height: 20,
@@ -495,7 +543,21 @@ class _AccountSettingsState extends State<_AccountSettings> {
                                         ),
                                   actions: isUpdating
                                       ? [] // Empty array means no actions when loading
-                                      : [
+                                      : [ TextButton(
+                                            child: Text(
+                                              'Cancel',
+                                              style: TextStyle(
+                                                fontFamily: 'Futura',
+                                                color: Colors.grey[700],
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w400,
+                                              ),
+                                            ),
+                                            onPressed: () {
+                                              Navigator.of(context)
+                                                  .pop(); // Close the dialog
+                                            },
+                                          ),
                                           TextButton(
                                             child: isUpdating
                                                 ? SizedBox()
@@ -541,6 +603,9 @@ class _AccountSettingsState extends State<_AccountSettings> {
                                                         'userProfile':
                                                             newProfileURL,
                                                       });
+                                                      
+                                                      var user = FirebaseAuth.instance.currentUser;
+                                                      user?.updatePhotoURL(newProfileURL);
 
                                                       setState(() {
                                                         isChanged = false;
@@ -575,21 +640,6 @@ class _AccountSettingsState extends State<_AccountSettings> {
                                                       // You may try to re-authenticate the user or handle the token issue here
                                                     }
                                                   },
-                                          ),
-                                          TextButton(
-                                            child: Text(
-                                              'Cancel',
-                                              style: TextStyle(
-                                                fontFamily: 'Futura',
-                                                color: Colors.grey[700],
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w400,
-                                              ),
-                                            ),
-                                            onPressed: () {
-                                              Navigator.of(context)
-                                                  .pop(); // Close the dialog
-                                            },
                                           ),
                                         ],
                                 );
