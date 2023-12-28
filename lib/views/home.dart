@@ -288,8 +288,11 @@ class HomeState extends State<Home> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) =>
-                              WebViewer(initialUrl: portal.link),
+                          builder: (context) => WebViewer(
+                            initialUrl: portal.link,
+                            pageTitle: portal
+                                .title, // Pass the portal title to WebViewer
+                          ),
                         ),
                       );
                     },

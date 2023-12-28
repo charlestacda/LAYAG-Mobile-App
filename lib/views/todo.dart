@@ -13,8 +13,6 @@ import 'package:lpu_app/views/components/app_drawer.dart';
 import 'package:lpu_app/views/help.dart';
 import 'dart:async';
 
-
-
 DateTime dateNow = DateTime.now();
 DateTime date = DateTime(dateNow.year, dateNow.month, dateNow.day);
 TimeOfDay timeNow = TimeOfDay.now();
@@ -58,7 +56,6 @@ class ToDoState extends State<ToDo> {
   List<dynamic> combinedTasks = [];
   late Timer _timer;
 
-
   @override
   void initState() {
     super.initState();
@@ -80,18 +77,16 @@ class ToDoState extends State<ToDo> {
     super.dispose();
   }
 
-  
-
-   Future<void> sendReminderNotification(String title, String message) async {
-  await AwesomeNotifications().createNotification(
-    content: NotificationContent(
-      id: 0, // Unique ID for the notification
-      channelKey: 'basic_channel', // Channel key defined in initialization
-      title: title,
-      body: message,
-    ),
-  );
-}
+  Future<void> sendReminderNotification(String title, String message) async {
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: 0, // Unique ID for the notification
+        channelKey: 'basic_channel', // Channel key defined in initialization
+        title: title,
+        body: message,
+      ),
+    );
+  }
 
   void checkAndSendReminders(List<TaskModel> tasks) {
     final now = DateTime.now();
@@ -101,91 +96,96 @@ class ToDoState extends State<ToDo> {
       final timeDifferenceInSeconds =
           format.parse(task.deadlineDate).difference(now).inSeconds;
       print(task.overdueNotificationSent);
-      
+
       if (!task.dueSoonNotificationSent &&
-          timeDifferenceInSeconds <= 7 * 24 * 60 * 60 && timeDifferenceInSeconds > 24 * 60 * 60) {
+          timeDifferenceInSeconds <= 7 * 24 * 60 * 60 &&
+          timeDifferenceInSeconds > 24 * 60 * 60) {
         _notifreference.doc(userID).set({
-        'Notifications': {
-          '${task.todoTask}_${DateTime.now().millisecondsSinceEpoch}': {
-            'notifName':'Task Due Soon',
-            'notifTitle': 'Task "${task.todoTask}" is due next week.',
+          'Notifications': {
+            '${task.todoTask}_${DateTime.now().millisecondsSinceEpoch}': {
+              'notifName': 'Task Due Soon',
+              'notifTitle': 'Task "${task.todoTask}" is due next week.',
+            }
           }
-        }
-      }, SetOptions(merge: true));
+        }, SetOptions(merge: true));
         task.dueSoonNotificationSent = true;
         _todoreference.doc(userID).set({
-        task.todoTask: {
-          'todoTask': task.todoTask,
-          'dueSoonNotificationSent': true,
-        }
-      }, SetOptions(merge: true));
-      } else if (!task.dueTomNotificationSent &&
-          timeDifferenceInSeconds == 24 * 60 * 60) {
-        _notifreference.doc(userID).set({
-        'Notifications': {
-          '${task.todoTask}_${DateTime.now().millisecondsSinceEpoch}': {
-            'notifName': 'Task Due Tomorrow',
-            'notifTitle': 'Task "${task.todoTask}" is due tomorrow.',
+          task.todoTask: {
+            'todoTask': task.todoTask,
+            'dueSoonNotificationSent': true,
           }
-        }
-      }, SetOptions(merge: true));
+        }, SetOptions(merge: true));
+      } else if (!task.dueTomNotificationSent &&
+          timeDifferenceInSeconds <= 24 * 60 * 60 &&
+          timeDifferenceInSeconds > 6 * 60 * 60) {
+        _notifreference.doc(userID).set({
+          'Notifications': {
+            '${task.todoTask}_${DateTime.now().millisecondsSinceEpoch}': {
+              'notifName': 'Task Due Tomorrow',
+              'notifTitle': 'Task "${task.todoTask}" is due tomorrow.',
+            }
+          }
+        }, SetOptions(merge: true));
         task.dueTomNotificationSent = true;
         _todoreference.doc(userID).set({
-        task.todoTask: {
-          'todoTask': task.todoTask,
-          'dueTomNotificationSent': true,
-        }
-      }, SetOptions(merge: true));
-      } else if (!task.dueSixNotificationSent && timeDifferenceInSeconds == 6 * 60 * 60) {
-       _notifreference.doc(userID).set({
-        'Notifications': {
-          '${task.todoTask}_${DateTime.now().millisecondsSinceEpoch}': {
-            'notifName': 'Task Due 6 Hours',
-            'notifTitle': 'Task "${task.todoTask}" is due within 6 hours.',
+          task.todoTask: {
+            'todoTask': task.todoTask,
+            'dueTomNotificationSent': true,
           }
-        }
-      }, SetOptions(merge: true));
+        }, SetOptions(merge: true));
+      } else if (!task.dueSixNotificationSent &&
+          timeDifferenceInSeconds <= 6 * 60 * 60 &&
+          timeDifferenceInSeconds > 60 * 60) {
+        _notifreference.doc(userID).set({
+          'Notifications': {
+            '${task.todoTask}_${DateTime.now().millisecondsSinceEpoch}': {
+              'notifName': 'Task Due 6 Hours',
+              'notifTitle': 'Task "${task.todoTask}" is due within 6 hours.',
+            }
+          }
+        }, SetOptions(merge: true));
         task.dueSixNotificationSent = true;
         _todoreference.doc(userID).set({
-        task.todoTask: {
-          'todoTask': task.todoTask,
-          'dueSixNotificationSent': true,
-        }
-      }, SetOptions(merge: true));
-      } else if (!task.almostDueNotificationSent &&
-          timeDifferenceInSeconds == 60 * 60) {
-        _notifreference.doc(userID).set({
-        'Notifications': {
-          '${task.todoTask}_${DateTime.now().millisecondsSinceEpoch}': {
-            'notifName': 'Task Almost Due',
-            'notifTitle': 'Task "${task.todoTask}" is almost due.',
+          task.todoTask: {
+            'todoTask': task.todoTask,
+            'dueSixNotificationSent': true,
           }
-        }
-      }, SetOptions(merge: true));
+        }, SetOptions(merge: true));
+      } else if (!task.almostDueNotificationSent &&
+          timeDifferenceInSeconds <= 60 * 60 &&
+          timeDifferenceInSeconds > 0) {
+        _notifreference.doc(userID).set({
+          'Notifications': {
+            '${task.todoTask}_${DateTime.now().millisecondsSinceEpoch}': {
+              'notifName': 'Task Almost Due',
+              'notifTitle': 'Task "${task.todoTask}" is almost due.',
+            }
+          }
+        }, SetOptions(merge: true));
         task.almostDueNotificationSent = true;
         _todoreference.doc(userID).set({
-        task.todoTask: {
-          'todoTask': task.todoTask,
-          'almostDueNotificationSent': true,
-        }
-      }, SetOptions(merge: true));
+          task.todoTask: {
+            'todoTask': task.todoTask,
+            'almostDueNotificationSent': true,
+          }
+        }, SetOptions(merge: true));
       } else if (!task.overdueNotificationSent &&
           timeDifferenceInSeconds <= 0) {
         _notifreference.doc(userID).set({
-        'Notifications': {
-          '${task.todoTask}_${DateTime.now().millisecondsSinceEpoch}': {
-            'notifName': 'Task Overdue',
-            'notifTitle': 'Task "${task.todoTask}" is overdue.',
+          'Notifications': {
+            '${task.todoTask}_${DateTime.now().millisecondsSinceEpoch}': {
+              'notifName': 'Task Overdue',
+              'notifTitle': 'Task "${task.todoTask}" is overdue.',
+            }
           }
-        }
-      }, SetOptions(merge: true));
+        }, SetOptions(merge: true));
         task.overdueNotificationSent = true;
         _todoreference.doc(userID).set({
-        task.todoTask: {
-          'todoTask': task.todoTask,
-          'overdueNotificationSent': true,
-        }
-      }, SetOptions(merge: true));
+          task.todoTask: {
+            'todoTask': task.todoTask,
+            'overdueNotificationSent': true,
+          }
+        }, SetOptions(merge: true));
       }
     }
   }
@@ -254,11 +254,16 @@ class ToDoState extends State<ToDo> {
           'CreatedDate': convertedCompletedTask.CreatedDate,
           'DeadlineDate': convertedCompletedTask.DeadlineDate,
           'TodoStatus': 'Completed',
-          'DueSoonNotificationSent': convertedCompletedTask.DueSoonNotificationSent,
-          'DueTomNotificationSent': convertedCompletedTask.DueTomNotificationSent,
-          'DueSixNotificationSent': convertedCompletedTask.DueSixNotificationSent,
-          'AlmostDueNotificationSent': convertedCompletedTask.AlmostDueNotificationSent,
-          'OverdueNotificationSent': convertedCompletedTask.OverdueNotificationSent,
+          'DueSoonNotificationSent':
+              convertedCompletedTask.DueSoonNotificationSent,
+          'DueTomNotificationSent':
+              convertedCompletedTask.DueTomNotificationSent,
+          'DueSixNotificationSent':
+              convertedCompletedTask.DueSixNotificationSent,
+          'AlmostDueNotificationSent':
+              convertedCompletedTask.AlmostDueNotificationSent,
+          'OverdueNotificationSent':
+              convertedCompletedTask.OverdueNotificationSent,
         }
       }, SetOptions(merge: true));
 
@@ -285,11 +290,16 @@ class ToDoState extends State<ToDo> {
           'createdDate': convertedIncompleteTask.createdDate,
           'deadlineDate': convertedIncompleteTask.deadlineDate,
           'todoStatus': 'Pending',
-          'DueSoonNotificationSent': convertedIncompleteTask.dueSoonNotificationSent,
-          'DueTomNotificationSent': convertedIncompleteTask.dueSixNotificationSent,
-          'DueSixNotificationSent': convertedIncompleteTask.dueSixNotificationSent,
-          'AlmostDueNotificationSent': convertedIncompleteTask.almostDueNotificationSent,
-          'OverdueNotificationSent': convertedIncompleteTask.overdueNotificationSent,
+          'DueSoonNotificationSent':
+              convertedIncompleteTask.dueSoonNotificationSent,
+          'DueTomNotificationSent':
+              convertedIncompleteTask.dueSixNotificationSent,
+          'DueSixNotificationSent':
+              convertedIncompleteTask.dueSixNotificationSent,
+          'AlmostDueNotificationSent':
+              convertedIncompleteTask.almostDueNotificationSent,
+          'OverdueNotificationSent':
+              convertedIncompleteTask.overdueNotificationSent,
         }
       }, SetOptions(merge: true));
 
@@ -467,7 +477,7 @@ class ToDoState extends State<ToDo> {
                             Fluttertoast.showToast(
                                 msg: 'Please set Date and Time');
                           } else {
-                            fDate ??= 
+                            fDate ??=
                                 DateFormat('yyyy-MM-dd').format(DateTime.now());
                             fTime ??=
                                 DateFormat('h:mm a').format(DateTime.now());
@@ -496,8 +506,11 @@ class ToDoState extends State<ToDo> {
 
                                 print(timeDifferenceInSeconds);
 
-                                String formattedNow = DateFormat('yyyy-MM-dd h:mm a').format(now);
-                                String formattedSelectedDateTime = DateFormat('yyyy-MM-dd h:mm a').format(selectedDateTime);
+                                String formattedNow =
+                                    DateFormat('yyyy-MM-dd h:mm a').format(now);
+                                String formattedSelectedDateTime =
+                                    DateFormat('yyyy-MM-dd h:mm a')
+                                        .format(selectedDateTime);
 
                                 setState(() {
                                   todoList.add(TaskModel(
@@ -559,13 +572,31 @@ class ToDoState extends State<ToDo> {
                       width: double.infinity,
                     ),
                     padding: const EdgeInsets.fromLTRB(0, 0, 0, 16)),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(0, 32, 0, 16),
+                    child: Text(
+                      todoList.length == 0
+                          ? 'No Ongoing Task'
+                          : 'Ongoing (${todoList.length})',
+                      textAlign: TextAlign.left,
+                      style: const TextStyle(
+                        fontFamily: 'Futura',
+                        fontSize: 28,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
                 ListView.builder(
                   scrollDirection: Axis.vertical,
                   physics: const NeverScrollableScrollPhysics(),
                   shrinkWrap: true,
                   itemCount: todoList.length,
                   itemBuilder: (context, index) {
-                    DateTime deadlineDate = getDateTimeFromString(todoList[index].deadlineDate);
+                    DateTime deadlineDate =
+                        getDateTimeFromString(todoList[index].deadlineDate);
                     Color taskColor = _getTaskColor(deadlineDate);
                     return Card(
                       shape: RoundedRectangleBorder(
@@ -624,7 +655,9 @@ class ToDoState extends State<ToDo> {
                   child: Container(
                     padding: const EdgeInsets.fromLTRB(0, 32, 0, 16),
                     child: Text(
-                      'Completed (' + completedList.length.toString() + ')',
+                      completedList.length == 0
+                          ? 'No Completed Task'
+                          : 'Completed (${completedList.length})',
                       textAlign: TextAlign.left,
                       style: const TextStyle(
                         fontFamily: 'Futura',
@@ -705,8 +738,8 @@ class ToDoState extends State<ToDo> {
       );
 
   Future<void> cancelAllScheduledNotifications() async {
-  await AwesomeNotifications().cancelAllSchedules();
-}
+    await AwesomeNotifications().cancelAllSchedules();
+  }
 
   void addToDo(String ID) async {
     try {
@@ -730,7 +763,7 @@ class ToDoState extends State<ToDo> {
           'dueTomNotificationSent': false,
           'dueSixNotificationSent': false,
           'almostDueNotificationSent': false,
-            'overdueNotificationSent': false,
+          'overdueNotificationSent': false,
         }
       }, SetOptions(merge: true));
 
@@ -743,46 +776,54 @@ class ToDoState extends State<ToDo> {
         }
       }, SetOptions(merge: true));
 
-    // Calculate dates for notifications
-    DateTime oneWeekBefore = selectedDateTime.subtract(Duration(days: 7));
-    DateTime oneDayBefore = selectedDateTime.subtract(Duration(days: 1));
-    DateTime sixHoursBefore = selectedDateTime.subtract(Duration(hours: 6));
-    DateTime oneHourBefore = selectedDateTime.subtract(Duration(hours: 1));
-    DateTime dueTime = selectedDateTime;
+      // Calculate dates for notifications
+      DateTime oneWeekBefore = selectedDateTime.subtract(Duration(days: 7));
+      DateTime oneDayBefore = selectedDateTime.subtract(Duration(days: 1));
+      DateTime sixHoursBefore = selectedDateTime.subtract(Duration(hours: 6));
+      DateTime oneHourBefore = selectedDateTime.subtract(Duration(hours: 1));
+      DateTime dueTime = selectedDateTime;
 
-    // Schedule notifications for each date
-    scheduleNotification('Task Due Soon', oneWeekBefore, 'Task "${todoTask.text}" is due next week.');
-    scheduleNotification('Task Due Tomorrow', oneDayBefore, 'Task "${todoTask.text}" is due tomorrow.');
-    scheduleNotification('Task Due in 6 Hours', sixHoursBefore, 'Task "${todoTask.text}" is due within 6 hours.');
-    scheduleNotification('Task Almost Due', oneHourBefore, 'Task "${todoTask.text}" is almost due.');
-    scheduleNotification('Task Overdue', dueTime, 'Task "${todoTask.text}" is overdue.');
+      // Schedule notifications for each date
+      scheduleNotification('Task Due Soon', oneWeekBefore,
+          'Task "${todoTask.text}" is due next week.');
+      scheduleNotification('Task Due Tomorrow', oneDayBefore,
+          'Task "${todoTask.text}" is due tomorrow.');
+      scheduleNotification('Task Due in 6 Hours', sixHoursBefore,
+          'Task "${todoTask.text}" is due within 6 hours.');
+      scheduleNotification('Task Almost Due', oneHourBefore,
+          'Task "${todoTask.text}" is almost due.');
+      scheduleNotification(
+          'Task Overdue', dueTime, 'Task "${todoTask.text}" is overdue.');
 
-    // Send a notification for adding the task
-    sendReminderNotification('Task Added', 'Added To Do: "${todoTask.text}"');
+      // Send a notification for adding the task
+      sendReminderNotification('Task Added', 'Added To Do: "${todoTask.text}"');
 
-    // Clear the input field after task addition
-    todoTask.text = '';
-  } catch (e) {
-    print('Error parsing date/time: $e');
-    Fluttertoast.showToast(msg: 'Error parsing date/time');
+      // Clear the input field after task addition
+      todoTask.text = '';
+    } catch (e) {
+      print('Error parsing date/time: $e');
+      Fluttertoast.showToast(msg: 'Error parsing date/time');
+    }
   }
-  }
-  Future<void> scheduleNotification(String title, DateTime scheduledTime, String body) async {
-  await AwesomeNotifications().createNotification(
-    content: NotificationContent(
-      id: scheduledTime.millisecondsSinceEpoch.hashCode,
-      channelKey: 'basic_channel', // Replace with your channel key
-      title: title,
-      body: body,
-    ),
-    schedule: NotificationCalendar.fromDate(date: scheduledTime),
-  );
+
+  Future<void> scheduleNotification(
+      String title, DateTime scheduledTime, String body) async {
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: scheduledTime.millisecondsSinceEpoch.hashCode,
+        channelKey: 'basic_channel', // Replace with your channel key
+        title: title,
+        body: body,
+      ),
+      schedule: NotificationCalendar.fromDate(date: scheduledTime),
+    );
   }
 
   Future<void> getToDo() async {
     final user = FirebaseAuth.instance.currentUser;
     try {
       if (user != null) {
+        print('Current user detected: ${user.uid}');
         final todoSnapshot = await FirebaseFirestore.instance
             .collection('todo_list')
             .doc(user.uid) // Fetch using user's UID
@@ -805,16 +846,12 @@ class ToDoState extends State<ToDo> {
               deadlineDate: taskData['deadlineDate'] ?? '',
               todoTask: taskData['todoTask'] ?? '',
               todoStatus: taskData['todoStatus'] ?? '',
-              dueSoonNotificationSent:
-                  taskData['dueSoonNotificationSent'],
-              dueTomNotificationSent:
-                  taskData['dueTomNotificationSent'],
-              dueSixNotificationSent:
-                  taskData['dueSixNotificationSent'],
-              almostDueNotificationSent:
-                  taskData['almostDueNotificationSent'],
-              overdueNotificationSent:
-                  taskData['overdueNotificationSent'],
+              dueSoonNotificationSent: taskData['dueSoonNotificationSent'] as bool? ?? false,
+              dueTomNotificationSent: taskData['dueTomNotificationSent'] as bool? ?? false,
+              dueSixNotificationSent: taskData['dueSixNotificationSent'] as bool? ?? false,
+              almostDueNotificationSent: taskData['almostDueNotificationSent'] as bool? ?? false,
+              overdueNotificationSent: taskData['overdueNotificationSent'] as bool? ?? false,
+
             );
           }).toList();
 

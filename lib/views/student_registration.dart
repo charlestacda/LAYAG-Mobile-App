@@ -832,7 +832,6 @@ class StudentRegistrationState extends State<StudentRegistration> {
                               'userFirstName': studentFName.text,
                               'userLastName': studentLName.text,
                               'userNo': studentNumber.text,
-                              'userPassword': studentPassword.text,
                               'userProfile': 'default.jpg',
                               'userType': 'Student',
                             });

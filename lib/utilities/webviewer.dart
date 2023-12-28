@@ -7,8 +7,9 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 class WebViewer extends StatefulWidget {
   final String initialUrl;
+  final String pageTitle;
 
-  const WebViewer({Key? key, required this.initialUrl}) : super(key: key);
+  const WebViewer({Key? key, required this.initialUrl,required this.pageTitle,}) : super(key: key);
 
   @override
   _WebViewerState createState() => _WebViewerState();
@@ -17,6 +18,7 @@ class WebViewer extends StatefulWidget {
 class _WebViewerState extends State<WebViewer> {
   late WebViewController _webViewController;
   late bool _showContentOnly;
+  
 
   @override
   void initState() {
@@ -28,7 +30,7 @@ class _WebViewerState extends State<WebViewer> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Web Viewer'),
+        title: Text(widget.pageTitle),
       ),
       body: SafeArea(
         child: Stack(

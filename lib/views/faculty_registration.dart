@@ -824,7 +824,6 @@ class FacultyRegistrationState extends State<FacultyRegistration> {
                               'userFirstName': facultyFirstName.text,
                               'userLastName': facultyLastName.text,
                               'userNo': facultyNumber.text,
-                              'userPassword': facultyPassword.text,
                               'userProfile': 'default.jpg',
                               'userType': 'Faculty',
                             });
