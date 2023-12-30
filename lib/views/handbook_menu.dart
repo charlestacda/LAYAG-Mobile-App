@@ -73,6 +73,17 @@ Widget build(BuildContext context) {
           ),
         ),
       ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 32, 16, 64), // Adjust the values as needed
+        child: Container(
+          alignment: Alignment.center,
+          child: Image.asset(
+            'assets/images/handbookmenu.png',
+            width: double.infinity,
+            alignment: Alignment.center,
+          ),
+        ),
+      ),
             StreamBuilder<QuerySnapshot>(
               stream: handbookStream,
               builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
