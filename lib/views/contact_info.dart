@@ -40,6 +40,7 @@ class _ContactInfo extends StatefulWidget {
 class _ContactInfoState extends State<_ContactInfo> {
   late Future<List<DocumentSnapshot>> academicDataFetchFuture;
   late Future<List<DocumentSnapshot>> administrativeDataFetchFuture;
+  Map<String, Color> expansionTileTextColors = {};
 
   @override
   void initState() {
@@ -70,6 +71,7 @@ class _ContactInfoState extends State<_ContactInfo> {
     return [];
   }
 
+
   Widget buildExpansionTileCards(List<DocumentSnapshot> data) {
     return Column(
       children: data.map((doc) {
@@ -79,9 +81,21 @@ class _ContactInfoState extends State<_ContactInfo> {
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 5.0),
           child: ExpansionTileCard(
+            onExpansionChanged: (expanded) {
+              setState(() {
+                // Update text color for the expanded tile only
+                expansionTileTextColors[doc['name']] =
+                    expanded ? Colors.white : Colors.black;
+              });
+            },
             baseColor: Colors.white,
-            expandedColor: AppConfig.appSecondaryTheme,
-            title: Text(doc['name'] ?? ''),
+            expandedColor: AppConfig.appSecondaryTheme, // Change this to your desired color
+            title: Text(
+              doc['name'] ?? '',
+              style: TextStyle(
+                color: expansionTileTextColors[doc['name']] ?? Colors.black,
+              ),
+            ),
             children: <Widget>[
               Container(
                 color: const Color(0xFFD0D0D0),
@@ -95,21 +109,23 @@ class _ContactInfoState extends State<_ContactInfo> {
                       children: [
                         if (contactInfo.any((info) => info['type'] == 'email'))
                           ..._buildContactInfo(
-                              'Email:',
-                              contactInfo
-                                  .where((info) => info['type'] == 'email')),
+                            'Email:',
+                            contactInfo
+                                .where((info) => info['type'] == 'email'),
+                          ),
                         if (contactInfo
                             .any((info) => info['type'] == 'phone_number'))
                           ..._buildContactInfo(
-                              'Phone Number:',
-                              contactInfo.where(
-                                  (info) => info['type'] == 'phone_number')),
-                        if (contactInfo
-                            .any((info) => info['type'] == 'facebook'))
+                            'Phone Number:',
+                            contactInfo.where(
+                                (info) => info['type'] == 'phone_number'),
+                          ),
+                        if (contactInfo.any((info) => info['type'] == 'facebook'))
                           ..._buildContactInfo(
-                              'Facebook:',
-                              contactInfo
-                                  .where((info) => info['type'] == 'facebook')),
+                            'Facebook:',
+                            contactInfo
+                                .where((info) => info['type'] == 'facebook'),
+                          ),
                       ],
                     ),
                   ),
@@ -122,8 +138,9 @@ class _ContactInfoState extends State<_ContactInfo> {
     );
   }
 
+
   List<Widget> _buildContactInfo(
-      String label, Iterable<Map<String, dynamic>> infos) {
+    String label, Iterable<Map<String, dynamic>> infos) {
     List<Widget> widgets = [];
     if (infos.length == 1) {
       widgets.addAll([
@@ -137,7 +154,9 @@ class _ContactInfoState extends State<_ContactInfo> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: infos
-                .map((info) => Text(info['value'], textAlign: TextAlign.left))
+                .map((info) => Text(info['value'],
+                      textAlign: TextAlign.left,
+                    ))
                 .toList(),
           ),
         ),

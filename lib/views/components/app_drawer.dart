@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:lpu_app/config/app_config.dart';
 import 'package:lpu_app/utilities/url.dart';
 import 'package:lpu_app/models/user_model.dart';
@@ -15,6 +16,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:lpu_app/views/payment_procedures.dart';
+import 'package:lpu_app/utilities/webviewer.dart';
 
 
 
@@ -79,7 +81,6 @@ class AppDrawerState extends State<AppDrawer> {
             return CircularProgressIndicator();
           } else if (snapshot.hasData && snapshot.data != null) {
             UserModel user = snapshot.data!;
-
             return ListView(
               padding: EdgeInsets.zero,
               children: [
@@ -174,6 +175,8 @@ class AppDrawerState extends State<AppDrawer> {
                       SharedPreferences prefs =
                           await SharedPreferences.getInstance();
                       prefs.setBool('dialogShown', false);
+
+                      InAppWebViewController.clearAllCache();
 
                       // Perform the logout process
                       await FirebaseAuth.instance.signOut();

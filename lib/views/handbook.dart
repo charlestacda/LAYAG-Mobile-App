@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:pdftron_flutter/pdftron_flutter.dart';
 
 class Handbook extends StatelessWidget {
   final String id;
@@ -7,8 +7,8 @@ class Handbook extends StatelessWidget {
   final String content;
   final bool visibleToEmployees;
   final bool visibleToStudents;
-  final DateTime dateAdded; // Changed the type to DateTime
-  final DateTime dateEdited; // Changed the type to DateTime
+  final DateTime dateAdded;
+  final DateTime dateEdited;
   final bool archived;
 
   Handbook({
@@ -28,10 +28,29 @@ class Handbook extends StatelessWidget {
       appBar: AppBar(
         title: Text(title),
       ),
-      body: SfPdfViewer.network(
-        content,
-        canShowScrollHead: true,
+      body: FutureBuilder(
+        future: openHandbookContent(content),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Failed to load handbook content'));
+          } else {
+            return Container(); // Display PDF using PDFtron's viewer
+          }
+        },
       ),
     );
+  }
+
+  Future<void> openHandbookContent(String content) async {
+    try {
+      // Open the handbook content using PDFtron's viewer
+      await PdftronFlutter.openDocument(content);
+    } catch (e) {
+      // Handle failure to open the handbook content
+      print('Failed to open handbook content: $e');
+      throw Exception('Failed to open handbook content');
+    }
   }
 }

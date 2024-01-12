@@ -23,6 +23,7 @@ class LoginState extends State<Login> {
 
   bool isLoggingIn = false;
   bool _isMounted = false;
+  bool _obscureText = true;
 
   @override
   initState() {
@@ -80,8 +81,8 @@ class LoginState extends State<Login> {
                           children: [
                             SvgPicture.asset(
                               'assets/images/Layag_Logo1.svg',
-                              width: 200, // Adjust the width as needed
-                              height: 200, // Adjust the height as needed
+                              width: 180, // Adjust the width as needed
+                              height: 180, // Adjust the height as needed
                             ),
                             SizedBox(
                                 height:
@@ -91,7 +92,7 @@ class LoginState extends State<Login> {
                               style: TextStyle(
                                 fontFamily: 'ZapfHumanist',
                                 color: Color(0xFFA33334),
-                                fontSize: 16,
+                                fontSize: 15
                               ),
                             ),
                             const Text(
@@ -107,81 +108,112 @@ class LoginState extends State<Login> {
                       ),
                       const SizedBox(height: 56),
                       Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          const SizedBox(height: 10),
-                          Container(
-                            alignment: Alignment.centerLeft,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            height: 56,
-                            child: TextField(
-                              controller: userEmail,
-                              textAlignVertical: TextAlignVertical.center,
-                              keyboardType: TextInputType.emailAddress,
-                              style: const TextStyle(
-                                  fontFamily: 'Arial', color: Colors.black),
-                              decoration: const InputDecoration(
-                                enabledBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Color(0xFFA33334), // Border color
-                                  ),
-                                ),
-                                contentPadding:
-                                    EdgeInsets.only(left: 16, right: 16),
-                                prefixIcon: Icon(
-                                  Icons.person,
-                                  color: Color(0xffA62D38),
-                                ),
-                                isCollapsed: true,
-                                hintText: 'Student/Faculty Email',
-                                hintStyle: TextStyle(color: Colors.grey),
-                              ),
-                            ),
-                          )
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          const SizedBox(height: 10),
-                          Container(
-                            alignment: Alignment.centerLeft,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            height: 56,
-                            child: TextField(
-                              obscureText: true,
-                              controller: userPass,
-                              textAlignVertical: TextAlignVertical.center,
-                              keyboardType: TextInputType.visiblePassword,
-                              style: const TextStyle(
-                                  fontFamily: 'Arial', color: Colors.black),
-                              decoration: const InputDecoration(
-                                enabledBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Color(0xFFA33334), // Border color
-                                  ),
-                                ),
-                                contentPadding:
-                                    EdgeInsets.only(left: 16, right: 16),
-                                prefixIcon: Icon(
-                                  Icons.lock,
-                                  color: Color(0xffA62D38),
-                                ),
-                                hintText: 'Password',
-                                hintStyle: TextStyle(color: Colors.grey),
-                                isCollapsed: true,
-                              ),
-                            ),
-                          )
-                        ],
-                      ),
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: <Widget>[
+    const SizedBox(height: 10),
+    Container(
+      alignment: Alignment.centerLeft,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(5),
+      ),
+      height: 56,
+      child: TextField(
+        controller: userEmail,
+        textAlignVertical: TextAlignVertical.center,
+        keyboardType: TextInputType.emailAddress,
+        style: const TextStyle(
+          fontFamily: 'Arial',
+          color: Colors.black,
+        ),
+        decoration: InputDecoration(
+          enabledBorder: OutlineInputBorder(
+            borderSide: BorderSide(
+              color: Color(0xFFA33334), // Border color
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(
+              color: Color(0xFFA33334), // Border color when focused
+              width: 2.0, // Change the width of the border when focused
+            ),
+          ),
+          contentPadding: EdgeInsets.only(left: 16, right: 16),
+          prefixIcon: Icon(
+            Icons.person,
+            color: Color(0xffA62D38),
+          ),
+          isCollapsed: true,
+          hintText: 'Student/Faculty Email',
+          hintStyle: TextStyle(color: Colors.grey),
+        ),
+      ),
+    )
+  ],
+),
+const SizedBox(height: 8),
+Column(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: <Widget>[
+    const SizedBox(height: 10),
+    Container(
+      alignment: Alignment.centerLeft,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(5),
+      ),
+      height: 56,
+      child: Stack(
+        alignment: Alignment.centerRight,
+        children: [
+          TextField(
+            obscureText: _obscureText,
+            controller: userPass,
+            textAlignVertical: TextAlignVertical.center,
+            keyboardType: TextInputType.visiblePassword,
+            style: const TextStyle(
+              fontFamily: 'Arial',
+              color: Colors.black,
+            ),
+            decoration: InputDecoration(
+              enabledBorder: OutlineInputBorder(
+                borderSide: BorderSide(
+                  color: Color(0xFFA33334), // Border color
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderSide: BorderSide(
+                  color: Color(0xFFA33334), // Border color when focused
+                  width: 2.0, // Change the width of the border when focused
+                ),
+              ),
+              contentPadding: EdgeInsets.only(left: 16, right: 48), // Adjust right padding for the icon
+              prefixIcon: Icon(
+                Icons.lock,
+                color: Color(0xffA62D38),
+              ),
+              hintText: 'Password',
+              hintStyle: TextStyle(color: Colors.grey),
+              isCollapsed: true,
+            ),
+          ),
+          IconButton(
+            icon: Icon(
+              _obscureText ? Icons.visibility : Icons.visibility_off,
+              color: Colors.grey,
+            ),
+            onPressed: () {
+              setState(() {
+                _obscureText = !_obscureText; // Toggle password visibility
+              });
+            },
+          ),
+        ],
+      ),
+    )
+  ],
+),
+
                       Container(
                         alignment: Alignment.centerRight,
                         child: TextButton(

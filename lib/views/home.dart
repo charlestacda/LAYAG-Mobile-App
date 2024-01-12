@@ -13,6 +13,7 @@ import 'package:lpu_app/views/contact_info.dart';
 import 'package:lpu_app/views/help.dart';
 import 'package:lpu_app/views/payment_procedures.dart';
 import 'package:lpu_app/views/todo.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lpu_app/views/borrow_return.dart';
@@ -41,16 +42,32 @@ class HomeState extends State<Home> {
   late List<Portal> portals = [];
   StreamSubscription<QuerySnapshot>? portalsSubscription;
   DateTime lastCacheRefresh = DateTime(0);
-  late Timer _timer;
   final FirebaseAnalytics analytics = FirebaseAnalytics.instance;
+  late User? _user;
+
 
   @override
   void initState() {
     super.initState();
     randomNumber = random.nextInt(8);
 
+    WidgetsBinding.instance?.addPostFrameCallback((_) {
+    _promptNotificationPermissions();
+  });
+
     fetchUserType();
   }
+
+  Future<void> _promptNotificationPermissions() async {
+  PermissionStatus status = await Permission.notification.status;
+  if (!status.isGranted) {
+    PermissionStatus permissionStatus = await Permission.notification.request();
+    if (!permissionStatus.isGranted) {
+      // Handle if permission is still not granted
+      // For example, show an error message or handle it as required in your app
+    }
+  }
+}
 
   Future<void> fetchUserType() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -239,16 +256,26 @@ class HomeState extends State<Home> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         leading: Builder(
-          builder: (context) => IconButton(
-            icon: ClipOval(
-              child: Image.asset(
-                'assets/images/user.png',
-                width: 24,
-                height: 24,
+          builder: (context) {
+            // Fetch the current user details
+            final user = FirebaseAuth.instance.currentUser;
+            return IconButton(
+              icon: ClipOval(
+                child: user != null && user.photoURL != null
+                    ? Image.network(
+                        user.photoURL!,
+                        width: 24,
+                        height: 24,
+                      )
+                    : Image.asset(
+                        'assets/images/user.png',
+                        width: 24,
+                        height: 24,
+                      ),
               ),
-            ),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            );
+          },
         ),
         title: Image.asset('assets/images/lpu_title.png'),
         actions: [
@@ -290,8 +317,7 @@ class HomeState extends State<Home> {
                         MaterialPageRoute(
                           builder: (context) => WebViewer(
                             initialUrl: portal.link,
-                            pageTitle: portal
-                                .title, // Pass the portal title to WebViewer
+                            pageTitle: portal.title,
                           ),
                         ),
                       );
