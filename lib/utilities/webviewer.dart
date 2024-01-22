@@ -5,12 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:lpu_app/config/app_config.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:external_app_launcher/external_app_launcher.dart';
+
 
 class WebViewer extends StatefulWidget {
   final String initialUrl;
   final String pageTitle;
+  final String type;
 
-  const WebViewer({Key? key, required this.initialUrl, required this.pageTitle})
+  const WebViewer({Key? key, required this.initialUrl, required this.pageTitle, required this.type})
       : super(key: key);
 
   @override
@@ -30,7 +34,6 @@ class _WebViewerState extends State<WebViewer> {
   String userFname = '';
   String userCollege = '';
 
-
   @override
   void initState() {
     super.initState();
@@ -48,20 +51,31 @@ class _WebViewerState extends State<WebViewer> {
 
   @override
   Widget build(BuildContext context) {
+    print('_shouldShowExternalAppButton: ${_shouldShowExternalAppButton()}');
     return Scaffold(
       appBar: _isFullScreen
           ? null
           : AppBar(
               title: Text(widget.pageTitle),
-              leading: IconButton(
-                icon: const Icon(
-                    Icons.exit_to_app), // Change to your desired icon
-                onPressed: () {
-                  _onWillPop();
-                },
+              leading: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.exit_to_app),
+                    onPressed: () {
+                      _onWillPop();
+                    },
+                  ),
+                ],
               ),
               actions: [
-                // Add the Refresh button to the app bar
+                // Add the new button here
+                if (_shouldShowExternalAppButton())
+                  IconButton(
+                    icon: Icon(Icons.open_in_new), // Use your desired icon
+                    onPressed: () {
+                      _openExternalApp();
+                    },
+                  ),
                 IconButton(
                   icon: Icon(Icons.refresh),
                   onPressed: () {
@@ -86,6 +100,7 @@ class _WebViewerState extends State<WebViewer> {
                 javaScriptEnabled: true,
                 useOnDownloadStart: true,
                 mediaPlaybackRequiresUserGesture: false,
+                incognito: true,
               ),
               onWebViewCreated: (InAppWebViewController webViewController) {
                 _webViewController = webViewController;
@@ -194,6 +209,36 @@ class _WebViewerState extends State<WebViewer> {
     );
   }
 
+  bool _shouldShowExternalAppButton() {
+    final type = widget.type;
+    print('Current Type Color: $type');
+
+    return (type == '#00a62d');
+  }
+
+  void _openExternalApp() async {
+  final currentUrl = widget.initialUrl;
+  String appStoreUrl = '';
+
+  if (currentUrl == 'online.bpi.com.ph') {
+    appStoreUrl = 'com.bpi.ng.app';
+  } else if (currentUrl == 'online.bdo.com.ph') {
+    appStoreUrl = 'ph.com.bdo.retail';
+  } else if (currentUrl == 'onlinebanking.metrobank.com.ph') {
+    appStoreUrl = 'ph.com.metrobank.mcc.mbonline';
+  } else if (currentUrl == 'new.gcash.com'){
+    appStoreUrl = 'com.globe.gcash.android';
+  }
+
+  // Check if the app can be launched
+  await LaunchApp.openApp(
+                  androidPackageName: appStoreUrl,
+                  // openStore: false
+                );
+}
+
+
+
   Future<void> _fetchUserData() async {
     User? user = FirebaseAuth.instance.currentUser;
 
@@ -277,6 +322,14 @@ class _WebViewerState extends State<WebViewer> {
             usernameField.value = '$userEmail';
           }
 
+          var loginfmt = document.getElementsByName('loginfmt')[0];
+          if (loginfmt) {
+            loginfmt.value = '$userEmail'; 
+          }
+
+        
+          
+
           var txtUser = document.getElementsByName('txtUser')[0];
           if (txtUser) {
             txtUser.value = '$userNo';
@@ -301,6 +354,23 @@ class _WebViewerState extends State<WebViewer> {
           if (email) {
             email.value = '$userEmail';
           }
+
+          var dept = document.getElementsByName('dept')[0];
+        if (dept) {
+          // Check if userCollege is one of the specified values
+          if ('$userCollege' == 'COECSA - DCS' || '$userCollege' == 'COECSA - DOA' || '$userCollege' == 'COECSA - DOE') {
+            dept.value = 'COECSA';
+          } else {
+            // Keep the original value if not one of the specified values
+            dept.value = '$userCollege';
+          }
+          
+          // Trigger the change event after setting the value
+          var event = new Event('change', {'bubbles': true, 'cancelable': true});
+          dept.dispatchEvent(event);
+        }
+
+
 
         """,
       );

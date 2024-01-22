@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:external_app_launcher/external_app_launcher.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
@@ -45,29 +46,29 @@ class HomeState extends State<Home> {
   final FirebaseAnalytics analytics = FirebaseAnalytics.instance;
   late User? _user;
 
-
   @override
   void initState() {
     super.initState();
     randomNumber = random.nextInt(8);
 
     WidgetsBinding.instance?.addPostFrameCallback((_) {
-    _promptNotificationPermissions();
-  });
+      _promptNotificationPermissions();
+    });
 
     fetchUserType();
   }
 
   Future<void> _promptNotificationPermissions() async {
-  PermissionStatus status = await Permission.notification.status;
-  if (!status.isGranted) {
-    PermissionStatus permissionStatus = await Permission.notification.request();
-    if (!permissionStatus.isGranted) {
-      // Handle if permission is still not granted
-      // For example, show an error message or handle it as required in your app
+    PermissionStatus status = await Permission.notification.status;
+    if (!status.isGranted) {
+      PermissionStatus permissionStatus =
+          await Permission.notification.request();
+      if (!permissionStatus.isGranted) {
+        // Handle if permission is still not granted
+        // For example, show an error message or handle it as required in your app
+      }
     }
   }
-}
 
   Future<void> fetchUserType() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -251,6 +252,10 @@ class HomeState extends State<Home> {
 
   @override
   Widget build(BuildContext context) {
+    List<Portal> paymentPortals =
+        portals.where((portal) => portal.color == "#00a62d").toList();
+    List<Portal> otherPortals =
+        portals.where((portal) => portal.color != "#00a62d").toList();
     return Scaffold(
       drawer: const AppDrawer(),
       appBar: AppBar(
@@ -290,84 +295,141 @@ class HomeState extends State<Home> {
       ),
       body: SingleChildScrollView(
         child: Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Image.asset(
-              'assets/images/home_header.png',
-              width: double.infinity,
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              decoration: const BoxDecoration(
-                color: Colors.white,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/images/home_header.png',
+                width: double.infinity,
               ),
-              child: GridView.count(
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                crossAxisSpacing: 4.0,
-                mainAxisSpacing: 8.0,
-                shrinkWrap:
-                    true, // Added this to allow content to wrap its height
-                children: portals.map((portal) {
-                  Color cardColor =
-                      Color(int.parse(portal.color.replaceAll("#", "0xFF")));
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => WebViewer(
-                            initialUrl: portal.link,
-                            pageTitle: portal.title,
-                          ),
-                        ),
-                      );
-                    },
-                    child: Card(
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0)),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: cardColor,
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                        // Modify the code where you display the image in the UI
-                        child: Center(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: <Widget>[
-                              Expanded(
-                                child: portal.imageUrl.isNotEmpty
-                                    ? Image.network(
-                                        portal.imageUrl,
-                                        fit: BoxFit.contain,
-                                        errorBuilder: (_, __, ___) {
-                                          return const Text(
-                                              'Image unavailable');
-                                        },
-                                      )
-                                    : const SizedBox(), // Check if img is empty
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                portal.title,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: Color(0xFFFFFFFF),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                ),
+                child: Column(
+                  children: [
+                    // Other Portals
+                    GridView.count(
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 4.0,
+                      mainAxisSpacing: 8.0,
+                      shrinkWrap: true,
+                      children: [
+                        ...otherPortals.map((portal) {
+                          return buildPortalCard(portal);
+                        }),
+                        GestureDetector(
+      onTap: () {
+        openPaymentDialog(paymentPortals);
+      },
+      child: Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8.0),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Color(int.parse("#00a62d".replaceAll("#", "0xFF"))),
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: Image.asset(
+                  'assets/images/payment.png', // Add your asset image path here
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Payment Channels',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFFFFFFFF),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  ],
+),
+            ],
+            ),
+          ),
+          ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget buildPortalCard(Portal portal) {
+    Color cardColor = Color(int.parse(portal.color.replaceAll("#", "0xFF")));
+
+    return GestureDetector(
+      onTap: () async {
+        if (portal.title == 'GCash') {
+          await LaunchApp.openApp(
+            androidPackageName: 'com.globe.gcash.android',
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => WebViewer(
+                initialUrl: portal.link,
+                pageTitle: portal.title,
+                type: portal.color,
               ),
             ),
-          ]),
+          );
+        }
+      },
+      child: Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8.0),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+          child: Center(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Expanded(
+                  child: portal.imageUrl.isNotEmpty
+                      ? Image.network(
+                          portal.imageUrl,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) {
+                            return const Text('Image unavailable');
+                          },
+                        )
+                      : const SizedBox(), // Check if img is empty
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  portal.title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFFFFFFFF),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
