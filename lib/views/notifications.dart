@@ -249,15 +249,6 @@ class NotificationsState extends State<Notifications> {
           },
         ),
         title: Image.asset('assets/images/lpu_title.png'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.help_outline),
-            onPressed: () {
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const Help()));
-            },
-          ),
-        ],
       ),
         body: Column(
           children: [

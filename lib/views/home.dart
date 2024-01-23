@@ -10,6 +10,7 @@ import 'package:lpu_app/config/list_config.dart';
 import 'package:lpu_app/main.dart';
 import 'package:lpu_app/utilities/url.dart';
 import 'package:lpu_app/views/components/app_drawer.dart';
+import 'package:lpu_app/views/notifications.dart';
 import 'package:lpu_app/views/contact_info.dart';
 import 'package:lpu_app/views/help.dart';
 import 'package:lpu_app/views/payment_procedures.dart';
@@ -285,10 +286,10 @@ class HomeState extends State<Home> {
         title: Image.asset('assets/images/lpu_title.png'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.help_outline),
+            icon: const Icon(Icons.notifications_none),
             onPressed: () {
               Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const Help()));
+                  MaterialPageRoute(builder: (context) => const Notifications()));
             },
           ),
         ],
@@ -323,7 +324,7 @@ class HomeState extends State<Home> {
                         }),
                         GestureDetector(
       onTap: () {
-        openPaymentDialog(paymentPortals);
+        //openPaymentDialog(paymentPortals);
       },
       child: Card(
         shape: RoundedRectangleBorder(

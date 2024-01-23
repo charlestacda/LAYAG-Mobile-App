@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lpu_app/config/app_config.dart';
+import 'package:lpu_app/views/account_settings.dart';
 import 'package:lpu_app/views/home.dart';
 import 'package:lpu_app/views/calendar.dart';
 import 'package:lpu_app/views/todo.dart';
@@ -20,7 +21,7 @@ class BottomNavState extends State<NewNavigation> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: const [Calendar(), ToDo(), Home(), HandbookMenu(), Notifications()][currentIndex],
+      body: const [Calendar(), ToDo(), Home(), HandbookMenu(), AccountSettings()][currentIndex],
       backgroundColor: Colors.white,
       bottomNavigationBar: CurvedNavigationBar(
         index: currentIndex,
@@ -47,8 +48,8 @@ class BottomNavState extends State<NewNavigation> {
             color: Colors.white,
           ),
           Icon(
-            Icons.notifications_none_outlined,
-            color:Colors.white,
+            Icons.person_outlined,
+            color: Colors.white,
           ),
         ],
       ),

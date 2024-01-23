@@ -7,10 +7,12 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:lpu_app/config/app_config.dart';
 import 'package:lpu_app/utilities/url.dart';
 import 'package:lpu_app/models/user_model.dart';
+import 'package:lpu_app/views/handbook_menu.dart';
 import 'package:lpu_app/views/login.dart';
 import 'package:lpu_app/views/help.dart';
 import 'package:lpu_app/views/contact_info.dart';
 import 'package:lpu_app/views/account_settings.dart';
+import 'package:lpu_app/views/handbook.dart';
 import 'package:lpu_app/views/todo.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -148,7 +150,7 @@ class AppDrawerState extends State<AppDrawer> {
                   const Divider(),
                   ListTile(
                     leading: const Icon(Icons.settings_outlined),
-                    title: const Text('Account Settings'),
+                    title: const Text('Settings'),
                     onTap: () {
                       Navigator.push(
                           context,
