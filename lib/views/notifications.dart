@@ -225,179 +225,219 @@ class NotificationsState extends State<Notifications> {
   Widget build(BuildContext context) => Scaffold(
         drawer: const AppDrawer(),
         appBar: AppBar(
-          automaticallyImplyLeading: false,
-          leading: Builder(
-            builder: (context) => IconButton(
+        automaticallyImplyLeading: false,
+        leading: Builder(
+          builder: (context) {
+            // Fetch the current user details
+            final user = FirebaseAuth.instance.currentUser;
+            return IconButton(
               icon: ClipOval(
-                child: Image.asset(
-                  'assets/images/user.png',
-                  width: 24,
-                  height: 24,
-                ),
+                child: user != null && user.photoURL != null
+                    ? Image.network(
+                        user.photoURL!,
+                        width: 24,
+                        height: 24,
+                      )
+                    : Image.asset(
+                        'assets/images/user.png',
+                        width: 24,
+                        height: 24,
+                      ),
               ),
               onPressed: () => Scaffold.of(context).openDrawer(),
-            ),
-          ),
-          title: Image.asset('assets/images/lpu_title.png'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.help_outline),
-              onPressed: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => const Help()));
-              },
-            ),
-          ],
+            );
+          },
         ),
-        body: FutureBuilder<void>(
-          future: notificationsFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
-            } else if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
-            } else {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
-                physics: const ScrollPhysics(),
-                child: Column(
-                  children: <Widget>[
-                    ListView.builder(
-                      padding: const EdgeInsets.all(10),
-                      physics: const NeverScrollableScrollPhysics(),
-                      shrinkWrap: true,
-                      itemCount: notifList.length,
-                      itemBuilder: (context, index) => Container(
-                        decoration: const BoxDecoration(
-                            border: Border(
-                                bottom: BorderSide(
-                                    width: 1, color: Color(0xffdbdbdb)))),
-                        margin: const EdgeInsets.fromLTRB(0, 2, 0, 6),
-                        child: ListTile(
-                          leading: const Icon(
-                            Icons.notifications,
-                            color: AppConfig.appSecondaryTheme,
-                          ),
-                          title: Text(
-                            notifList[index].notifTitle,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                          onTap: () => null, // Implement functionality here
-                          trailing: IconButton(
-                            onPressed: () async {
-                              final user = FirebaseAuth.instance.currentUser;
-                              if (user != null) {
-                                final userID = user.uid;
+        title: Image.asset('assets/images/lpu_title.png'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            onPressed: () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => const Help()));
+            },
+          ),
+        ],
+      ),
+        body: Column(
+          children: [
+            Expanded(
+              child: FutureBuilder<void>(
+                future: notificationsFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  } else {
+                    return Stack(children: [
+                      Container(
+                        padding: const EdgeInsets.only(
+                            bottom: 10), // Adjust padding for the button
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+                          physics: const ScrollPhysics(),
+                          child: Column(
+                            children: <Widget>[
+                              ListView.builder(
+                                padding: const EdgeInsets.all(10),
+                                physics: const NeverScrollableScrollPhysics(),
+                                shrinkWrap: true,
+                                itemCount: notifList.length,
+                                itemBuilder: (context, index) => Container(
+                                  decoration: const BoxDecoration(
+                                    border: Border(
+                                      bottom: BorderSide(
+                                        width: 1,
+                                        color: Color(0xffdbdbdb),
+                                      ),
+                                    ),
+                                  ),
+                                  margin: const EdgeInsets.fromLTRB(0, 2, 0, 6),
+                                  child: ListTile(
+                                    leading: const Icon(
+                                      Icons.notifications,
+                                      color: AppConfig.appSecondaryTheme,
+                                    ),
+                                    title: Text(
+                                      notifList[index].notifTitle,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                    ),
+                                    onTap: () =>
+                                        null, // Implement functionality here
+                                    trailing: IconButton(
+                                      onPressed: () async {
+                                        final user =
+                                            FirebaseAuth.instance.currentUser;
+                                        if (user != null) {
+                                          final userID = user.uid;
 
-                                try {
-                                  final documentSnapshot =
-                                      await FirebaseFirestore.instance
-                                          .collection('users')
-                                          .doc(userID)
-                                          .get();
+                                          try {
+                                            final documentSnapshot =
+                                                await FirebaseFirestore.instance
+                                                    .collection('users')
+                                                    .doc(userID)
+                                                    .get();
 
-                                  if (documentSnapshot.exists) {
-                                    final data = documentSnapshot.data();
-                                    if (data != null &&
-                                        data.containsKey('Notifications')) {
-                                      final notifications =
-                                          data['Notifications']
-                                              as Map<String, dynamic>;
+                                            if (documentSnapshot.exists) {
+                                              final data =
+                                                  documentSnapshot.data();
+                                              if (data != null &&
+                                                  data.containsKey(
+                                                      'Notifications')) {
+                                                final notifications =
+                                                    data['Notifications']
+                                                        as Map<String, dynamic>;
 
-                                      MapEntry<String, dynamic>? foundKey;
-                                      for (var entry in notifications.entries) {
-                                        if (entry.value['notifTitle'] ==
-                                            notifList[index].notifTitle) {
-                                          foundKey = entry;
-                                          break;
+                                                MapEntry<String, dynamic>?
+                                                    foundKey;
+                                                for (var entry
+                                                    in notifications.entries) {
+                                                  if (entry.value[
+                                                          'notifTitle'] ==
+                                                      notifList[index]
+                                                          .notifTitle) {
+                                                    foundKey = entry;
+                                                    break;
+                                                  }
+                                                }
+
+                                                if (foundKey != null) {
+                                                  await FirebaseFirestore
+                                                      .instance
+                                                      .collection('users')
+                                                      .doc(userID)
+                                                      .update({
+                                                    'Notifications.${foundKey.key}':
+                                                        FieldValue.delete(),
+                                                  });
+
+                                                  setState(() {
+                                                    notifList.removeAt(index);
+                                                  });
+                                                }
+                                              }
+                                            }
+                                          } catch (e) {
+                                            print(
+                                                'Error deleting notification: $e');
+                                            // Handle error as needed
+                                          }
                                         }
-                                      }
-
-                                      if (foundKey != null) {
-                                        await FirebaseFirestore.instance
-                                            .collection('users')
-                                            .doc(userID)
-                                            .update({
-                                          'Notifications.${foundKey.key}':
-                                              FieldValue.delete(),
-                                        });
-
-                                        setState(() {
-                                          notifList.removeAt(index);
-                                        });
-                                      }
-                                    }
-                                  }
-                                } catch (e) {
-                                  print('Error deleting notification: $e');
-                                  // Handle error as needed
-                                }
-                              }
-                            },
-                            icon: const Icon(Icons.close),
+                                      },
+                                      icon: const Icon(Icons.close),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            }
-          },
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-        floatingActionButton: SizedBox(
-          width: 300,
-          height: 100,
-          child: Container(
-            margin:
-                EdgeInsets.only(bottom: 40), // Moves the button a bit higher
-            child: FloatingActionButton(
-              child: const Text(
-                'CLEAR ALL',
-                style: TextStyle(
-                  fontFamily: 'Futura',
-                  color: AppConfig.appWhiteAlphaTheme,
-                  fontSize: 14, // Reduced font size
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              onPressed: () async {
-                final user = FirebaseAuth.instance.currentUser;
-                if (user != null) {
-                  final userID = user.uid;
-
-                  try {
-                    await FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(userID)
-                        .update({
-                      'Notifications': {}, // Clear the Notifications map
-                    });
-
-                    setState(() {
-                      notifList
-                          .clear(); // Clear the local list of notifications
-                    });
-                  } catch (e) {
-                    print('Error clearing notifications: $e');
-                    // Handle error as needed
+                    ]);
                   }
-                }
-              },
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(5),
-                side: BorderSide(
-                  width: 2,
-                  color: AppConfig.appSecondaryTheme,
-                ),
+                },
               ),
-              backgroundColor: AppConfig.appSecondaryTheme,
             ),
-          ),
+            Container(
+              height: 100, // Adjust button container height
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              color: Colors.white, // Set the background color
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 300,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final user = FirebaseAuth.instance.currentUser;
+                        if (user != null) {
+                          final userID = user.uid;
+
+                          try {
+                            await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(userID)
+                                .update({
+                              'Notifications':
+                                  {}, // Clear the Notifications map
+                            });
+
+                            setState(() {
+                              notifList
+                                  .clear(); // Clear the local list of notifications
+                            });
+                          } catch (e) {
+                            print('Error clearing notifications: $e');
+                            // Handle error as needed
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        primary: AppConfig.appSecondaryTheme,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                      ),
+                      child: const Text(
+                        'CLEAR ALL',
+                        style: TextStyle(
+                          fontFamily: 'Futura',
+                          color: AppConfig.appWhiteAlphaTheme,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       );
 }

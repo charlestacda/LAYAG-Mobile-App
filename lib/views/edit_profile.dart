@@ -12,6 +12,7 @@ import 'package:lpu_app/config/app_config.dart';
 import 'package:lpu_app/config/list_config.dart';
 import 'package:lpu_app/models/user_model.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class EditProfile extends StatelessWidget {
   const EditProfile({Key? key}) : super(key: key);

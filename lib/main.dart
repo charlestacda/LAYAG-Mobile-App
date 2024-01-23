@@ -7,11 +7,13 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:lpu_app/config/app_config.dart';
 import 'package:lpu_app/views/landing.dart';
 import 'package:lpu_app/views/login.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+
 
 
 
@@ -39,6 +41,16 @@ Future<void> main() async {
   await Firebase.initializeApp(
   options: DefaultFirebaseOptions.currentPlatform,
 );
+
+WidgetsFlutterBinding.ensureInitialized();
+
+try {
+    final directory = await getApplicationDocumentsDirectory();
+    print('Application Documents Directory: ${directory.path}');
+  } catch (e) {
+    print('Error getting directory: $e');
+  }
+
 
   FlutterNativeSplash.remove();
   
@@ -91,6 +103,7 @@ Future<void> main() async {
     ),
     ),
   );
+  
 
 
 

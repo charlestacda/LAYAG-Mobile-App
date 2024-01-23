@@ -12,6 +12,7 @@ import 'package:lpu_app/models/user_model.dart';
 import 'package:lpu_app/views/components/app_drawer.dart';
 import 'package:lpu_app/views/help.dart';
 import 'dart:async';
+import 'package:permission_handler/permission_handler.dart';
 
 DateTime dateNow = DateTime.now();
 DateTime date = DateTime(dateNow.year, dateNow.month, dateNow.day);
@@ -56,6 +57,8 @@ class ToDoState extends State<ToDo> {
   List<dynamic> combinedTasks = [];
   late Timer _timer;
 
+  bool _isLoading = false;
+
   @override
   void initState() {
     super.initState();
@@ -75,6 +78,23 @@ class ToDoState extends State<ToDo> {
     // Cancel the timer to avoid memory leaks
     _timer.cancel();
     super.dispose();
+  }
+
+  void sortTodoListByDeadline() {
+    todoList.sort((a, b) {
+      DateTime deadlineA = getDateTimeFromString(a.deadlineDate);
+      DateTime deadlineB = getDateTimeFromString(b.deadlineDate);
+      return deadlineA.compareTo(deadlineB);
+    });
+  }
+
+// Function to sort completedList based on the deadlineDate
+  void sortCompletedListByDeadline() {
+    completedList.sort((a, b) {
+      DateTime deadlineA = getDateTimeFromString(a.DeadlineDate);
+      DateTime deadlineB = getDateTimeFromString(b.DeadlineDate);
+      return deadlineA.compareTo(deadlineB);
+    });
   }
 
   Future<void> sendReminderNotification(String title, String message) async {
@@ -214,10 +234,13 @@ class ToDoState extends State<ToDo> {
   }
 
   DateTime getDateTimeFromString(String dateString) {
-    DateFormat format = DateFormat("yyyy-MM-dd h:mm a");
-    DateTime? parsedDateTime = format.parse(dateString);
-    print("$parsedDateTime'");
-    return parsedDateTime;
+    try {
+      return DateFormat('yyyy-MM-dd hh:mm a').parse(dateString);
+    } catch (e) {
+      print('Error parsing date: $e');
+      // Handle the error as needed
+      return DateTime.now(); // Return current date and time in case of an error
+    }
   }
 
   Color _getTaskColor(DateTime deadlineDate) {
@@ -343,34 +366,72 @@ class ToDoState extends State<ToDo> {
     }
   }
 
+  void removeTodoTask(int index) async {
+    try {
+      // Store the information that needs to be deleted
+      final taskToRemove = todoList[index];
+
+      // Remove the card immediately from the UI
+      setState(() {
+        todoList.removeAt(index);
+      });
+
+      // Delete the stored information from the `completed_list` collection in Firestore
+      await firestore.collection('todo_list').doc(userID).update({
+        taskToRemove.todoTask: FieldValue.delete(),
+      }).then((_) {
+        // Successfully deleted from Firestore
+      }).catchError((error) {
+        // Handle error while deleting from Firestore
+        setState(() {
+          // Add the task back to the list if deletion from Firestore fails
+          todoList.insert(index, taskToRemove);
+        });
+        Fluttertoast.showToast(msg: 'Failed to remove task');
+      });
+    } catch (e) {
+      print('Error removing task: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         drawer: const AppDrawer(),
         appBar: AppBar(
-          automaticallyImplyLeading: false,
-          leading: Builder(
-            builder: (context) => IconButton(
+        automaticallyImplyLeading: false,
+        leading: Builder(
+          builder: (context) {
+            // Fetch the current user details
+            final user = FirebaseAuth.instance.currentUser;
+            return IconButton(
               icon: ClipOval(
-                child: Image.asset(
-                  'assets/images/user.png',
-                  width: 24,
-                  height: 24,
-                ),
+                child: user != null && user.photoURL != null
+                    ? Image.network(
+                        user.photoURL!,
+                        width: 24,
+                        height: 24,
+                      )
+                    : Image.asset(
+                        'assets/images/user.png',
+                        width: 24,
+                        height: 24,
+                      ),
               ),
               onPressed: () => Scaffold.of(context).openDrawer(),
-            ),
-          ),
-          title: Image.asset('assets/images/lpu_title.png'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.help_outline),
-              onPressed: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => const Help()));
-              },
-            ),
-          ],
+            );
+          },
         ),
+        title: Image.asset('assets/images/lpu_title.png'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            onPressed: () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => const Help()));
+            },
+          ),
+        ],
+      ),
         floatingActionButton: FloatingActionButton(
           shape: const RoundedRectangleBorder(
               borderRadius: BorderRadius.all(Radius.circular(4.0))),
@@ -385,6 +446,8 @@ class ToDoState extends State<ToDo> {
                 DateTime.now().toUtc().add(const Duration(hours: 8)));
             fDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
             fTime = DateFormat('h:mm a').format(DateTime.now());
+            List<String> existingTasks =
+                todoList.map((task) => task.todoTask).toList();
 
             showDialog(
                 context: context,
@@ -397,9 +460,12 @@ class ToDoState extends State<ToDo> {
                       children: <Widget>[
                         TextField(
                           onChanged: (value) => todoTask.text = value,
+                          decoration:
+                              const InputDecoration(labelText: 'Task Name'),
                         ),
                         TextField(
                           controller: dateController,
+                          readOnly: true,
                           onTap: () async {
                             DateTime? newDate = await showDatePicker(
                               context: context,
@@ -422,6 +488,7 @@ class ToDoState extends State<ToDo> {
                             });
                           },
                           decoration: InputDecoration(
+                            labelText: 'Deadline Date',
                             suffixIcon: Icon(Icons.calendar_today,
                                 color: AppConfig.appSecondaryTheme),
                             hintText: 'Select Date',
@@ -429,6 +496,7 @@ class ToDoState extends State<ToDo> {
                         ),
                         TextField(
                           controller: timeController,
+                          readOnly: true,
                           onTap: () async {
                             TimeOfDay currentTime = TimeOfDay.fromDateTime(
                               DateTime.now()
@@ -438,6 +506,13 @@ class ToDoState extends State<ToDo> {
                             TimeOfDay? newTime = await showTimePicker(
                               context: context,
                               initialTime: currentTime,
+                              builder: (BuildContext context, Widget? child) {
+                                return MediaQuery(
+                                  data: MediaQuery.of(context)
+                                      .copyWith(alwaysUse24HourFormat: false),
+                                  child: child!,
+                                );
+                              },
                             );
 
                             if (newTime == null) {
@@ -445,15 +520,34 @@ class ToDoState extends State<ToDo> {
                             }
 
                             setState(() {
-                              time =
-                                  newTime; // Set the selected time from the picker
-                              fTime = time.format(
-                                  context); // Format the selected time for displaying in the TextField
+                              time = newTime;
+
+                              // Create a DateTime object for the selected time
+                              DateTime selectedDateTime = DateTime(
+                                DateTime.now().year,
+                                DateTime.now().month,
+                                DateTime.now().day,
+                                time.hour,
+                                time.minute,
+                              );
+
+                              // Format the TimeOfDay object to match the 12-hour time format 'h:mm a'
+                              fTime = DateFormat('h:mm a').format(
+                                DateTime(
+                                  DateTime.now().year,
+                                  DateTime.now().month,
+                                  DateTime.now().day,
+                                  time.hour,
+                                  time.minute,
+                                ),
+                              );
+
                               timeController.text =
                                   fTime; // Update the text field with the selected time
                             });
                           },
                           decoration: InputDecoration(
+                            labelText: 'Deadline Time',
                             suffixIcon: Icon(Icons.access_time,
                                 color: AppConfig.appSecondaryTheme),
                             hintText: 'Select Time',
@@ -462,6 +556,18 @@ class ToDoState extends State<ToDo> {
                       ],
                     ),
                     actions: <Widget>[
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context)
+                              .pop(); // Close the dialog without adding
+                        },
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: Colors.grey, // Set the color to grey
+                          ),
+                        ),
+                      ),
                       TextButton(
                         onPressed: () {
                           final newTodo = FirebaseAuth.instance.currentUser;
@@ -476,6 +582,8 @@ class ToDoState extends State<ToDo> {
                           } else if (fDate == null || fTime == null) {
                             Fluttertoast.showToast(
                                 msg: 'Please set Date and Time');
+                          } else if (existingTasks.contains(todoTask.text)) {
+                            Fluttertoast.showToast(msg: 'Task already exists');
                           } else {
                             fDate ??=
                                 DateFormat('yyyy-MM-dd').format(DateTime.now());
@@ -538,6 +646,8 @@ class ToDoState extends State<ToDo> {
                                     overdueNotificationSent:
                                         timeDifferenceInSeconds <= 0,
                                   ));
+                                  sortTodoListByDeadline();
+                                  sortCompletedListByDeadline();
                                 });
 
                                 Navigator.of(context).pop();
@@ -598,19 +708,31 @@ class ToDoState extends State<ToDo> {
                     DateTime deadlineDate =
                         getDateTimeFromString(todoList[index].deadlineDate);
                     Color taskColor = _getTaskColor(deadlineDate);
+
                     return Card(
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4)),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      color: taskColor,
                       child: ListTile(
                         contentPadding: const EdgeInsets.fromLTRB(0, 0, 8, 0),
-                        title: Text(todoList[index].todoTask),
+                        title: Text(
+                          todoList[index].todoTask,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
                         subtitle: Text(
                           todoList[index].deadlineDate,
-                          // Format the deadlineDate as per your requirement
+                          style: TextStyle(
+                            color: Colors.white,
+                          ),
                         ),
                         leading: IconButton(
                           icon: const Icon(Icons.check_box_outline_blank),
-                          color: const Color(0xFF606060),
+                          color: Colors.white,
                           onPressed: () {
                             setState(() {
                               final completedTask = todoList.removeAt(index);
@@ -635,16 +757,88 @@ class ToDoState extends State<ToDo> {
                               updateFirestoreForCompletion(
                                   completedTask, convertedCompletedTask);
                             });
+
+                            sortTodoListByDeadline();
+                            sortCompletedListByDeadline();
                           },
                         ),
-                        trailing: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(4.0),
-                            color:
-                                taskColor, // Set the color based on the due date
-                          ),
-                          width: 35,
-                          height: 56,
+                        trailing: PopupMenuButton<String>(
+                          icon:
+                              const Icon(Icons.more_vert, color: Colors.white),
+                          onSelected: (String value) {
+                            if (value == 'edit') {
+                              // Show dialog for editing task
+                              _showEditDialog(context, todoList[index]);
+                            } else if (value == 'delete'){
+                              showDialog(
+                                  context: context,
+                                  builder: (BuildContext context) {
+                                    return AlertDialog(
+                                      title: const Text('Confirm Deletion',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          )),
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                              'Are you sure you want to delete the following task?'),
+                                          const SizedBox(height: 10),
+                                          Text(todoTask.text,
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold)),
+                                          Text(
+                                            todoList[index].todoTask,
+                                            style: const TextStyle(
+                                                color: AppConfig
+                                                    .appSecondaryTheme),
+                                          ),
+                                        ],
+                                      ),
+                                      actions: <Widget>[
+                                        TextButton(
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                          },
+                                          child: const Text(
+                                            'Cancel',
+                                            style: TextStyle(
+                                              color: Colors
+                                                  .grey, // Set the color to grey
+                                            ),
+                                          ),
+                                        ),
+                                        TextButton(
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                            cancelScheduledNotifications(
+                                                todoList[index].todoTask);
+                                            removeTodoTask(index);
+                                            sortTodoListByDeadline();
+                                            sortCompletedListByDeadline();
+                                          },
+                                          child: const Text('Delete'),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+                            }
+                          },
+                          itemBuilder: (BuildContext context) =>
+                              <PopupMenuEntry<String>>[
+                            const PopupMenuItem<String>(
+                              value: 'edit',
+                              child: Text('Edit'),
+                            ),
+                            const PopupMenuItem<String>(
+                              value: 'delete',
+                              child: Text('Delete'),
+                            ),
+                            // Add other options if needed
+                          ],
                         ),
                       ),
                     );
@@ -719,14 +913,69 @@ class ToDoState extends State<ToDo> {
                                   updateFirestoreForIncompletion(
                                       incompleteTask, convertedIncompleteTask);
                                 });
+                                sortTodoListByDeadline();
+                                sortCompletedListByDeadline();
                               },
                             ),
                             trailing: IconButton(
                               icon: const Icon(Icons.close),
                               color: const Color(0xff606060),
                               onPressed: () {
-                                removeCompletedTask(index);
-                                //cancelAllScheduledNotifications();
+                                showDialog(
+                                  context: context,
+                                  builder: (BuildContext context) {
+                                    return AlertDialog(
+                                      title: const Text('Confirm Deletion',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          )),
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                              'Are you sure you want to delete the following task?'),
+                                          const SizedBox(height: 10),
+                                          Text(todoTask.text,
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold)),
+                                          Text(
+                                            completedList[index].TodoTask,
+                                            style: const TextStyle(
+                                                color: AppConfig
+                                                    .appSecondaryTheme),
+                                          ),
+                                        ],
+                                      ),
+                                      actions: <Widget>[
+                                        TextButton(
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                          },
+                                          child: const Text(
+                                            'Cancel',
+                                            style: TextStyle(
+                                              color: Colors
+                                                  .grey, // Set the color to grey
+                                            ),
+                                          ),
+                                        ),
+                                        TextButton(
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                            cancelScheduledNotifications(
+                                                completedList[index].TodoTask);
+                                            removeCompletedTask(index);
+                                            sortTodoListByDeadline();
+                                            sortCompletedListByDeadline();
+                                          },
+                                          child: const Text('Delete'),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
                               },
                             ),
                           ));
@@ -738,7 +987,7 @@ class ToDoState extends State<ToDo> {
       );
 
   Future<void> cancelAllScheduledNotifications() async {
-    await AwesomeNotifications().cancelAllSchedules();
+    await AwesomeNotifications().cancelAll();
   }
 
   void addToDo(String ID) async {
@@ -783,17 +1032,17 @@ class ToDoState extends State<ToDo> {
       DateTime oneHourBefore = selectedDateTime.subtract(Duration(hours: 1));
       DateTime dueTime = selectedDateTime;
 
-      // Schedule notifications for each date
-      scheduleNotification('Task Due Soon', oneWeekBefore,
-          'Task "${todoTask.text}" is due next week.');
-      scheduleNotification('Task Due Tomorrow', oneDayBefore,
-          'Task "${todoTask.text}" is due tomorrow.');
-      scheduleNotification('Task Due in 6 Hours', sixHoursBefore,
-          'Task "${todoTask.text}" is due within 6 hours.');
-      scheduleNotification('Task Almost Due', oneHourBefore,
-          'Task "${todoTask.text}" is almost due.');
-      scheduleNotification(
-          'Task Overdue', dueTime, 'Task "${todoTask.text}" is overdue.');
+      // Schedule notifications for each date with unique IDs
+      scheduleNotification('Task Due Soon', 'id_1', oneWeekBefore,
+          'Task "${todoTask.text}" is due next week.', todoTask.text);
+      scheduleNotification('Task Due Tomorrow', 'id_2', oneDayBefore,
+          'Task "${todoTask.text}" is due tomorrow.', todoTask.text);
+      scheduleNotification('Task Due in 6 Hours', 'id_3', sixHoursBefore,
+          'Task "${todoTask.text}" is due within 6 hours.', todoTask.text);
+      scheduleNotification('Task Almost Due', 'id_4', oneHourBefore,
+          'Task "${todoTask.text}" is almost due.', todoTask.text);
+      scheduleNotification('Task Overdue', 'id_5', dueTime,
+          'Task "${todoTask.text}" is overdue.', todoTask.text);
 
       // Send a notification for adding the task
       sendReminderNotification('Task Added', 'Added To Do: "${todoTask.text}"');
@@ -806,17 +1055,332 @@ class ToDoState extends State<ToDo> {
     }
   }
 
-  Future<void> scheduleNotification(
-      String title, DateTime scheduledTime, String body) async {
+  _showEditDialog(BuildContext context, TaskModel task) {
+    TextEditingController taskController =
+        TextEditingController(text: task.todoTask);
+    String prevTask = task.todoTask;
+    DateTime selectedDate = getDateTimeFromString(task.deadlineDate);
+    TimeOfDay selectedTime = TimeOfDay.fromDateTime(selectedDate);
+
+    TextEditingController dateController = TextEditingController(
+      text: formattedDate(selectedDate),
+    );
+
+    TextEditingController timeController = TextEditingController(
+      text: formattedTime(selectedTime),
+    );
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Edit To Do Item'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: taskController,
+                  decoration: InputDecoration(labelText: 'Task Name'),
+                ),
+                SizedBox(height: 20),
+                InkWell(
+                  onTap: () async {
+                    final DateTime? pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime(2101),
+                    );
+                    if (pickedDate != null && pickedDate != selectedDate) {
+                      setState(() {
+                        selectedDate = pickedDate;
+                        dateController.text = formattedDate(
+                            selectedDate); // Update the date field text
+                      });
+                    }
+                  },
+                  child: IgnorePointer(
+                    child: TextFormField(
+                      decoration: InputDecoration(
+                        labelText: 'Deadline Date',
+                        suffixIcon: Icon(Icons.calendar_today,
+                            color: AppConfig.appSecondaryTheme),
+                      ),
+                      controller: dateController,
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: () async {
+                    final TimeOfDay? pickedTime = await showTimePicker(
+                      context: context,
+                      initialTime: selectedTime,
+                    );
+                    if (pickedTime != null && pickedTime != selectedTime) {
+                      setState(() {
+                        selectedTime = pickedTime;
+                        timeController.text = formattedTime(
+                            selectedTime); // Update the time field text
+                      });
+                    }
+                  },
+                  child: IgnorePointer(
+                    child: TextFormField(
+                      decoration: InputDecoration(
+                        labelText: 'Deadline Time',
+                        suffixIcon: Icon(Icons.access_time,
+                            color: AppConfig.appSecondaryTheme),
+                      ),
+                      controller: timeController,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.grey, // Set the color to grey
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                String? userId = userID; // Replace with actual user ID
+                String taskId = prevTask; // Replace with actual task ID
+                String newTaskText = taskController
+                    .text; // Get the text from the TextEditingController
+                String editedDeadlineDateTime =
+                    formattedDateTime(selectedDate, selectedTime);
+                Navigator.of(context).pop();
+                cancelScheduledNotifications(taskId);
+                updateTaskDetailsInFirestore(
+                    userId!, taskId, newTaskText, editedDeadlineDateTime);
+              },
+              child: Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> updateTaskDetailsInFirestore(String userId, String taskId,
+      String newTaskText, String editedDeadlineDateTime) async {
+    try {
+      // Show loading dialog
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false, // Prevent dismissing while updating
+        builder: (BuildContext context) {
+          return AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 20),
+                Text('Updating...'),
+              ],
+            ),
+          );
+        },
+      );
+      DateTime selectedDateTime =
+          DateFormat('yyyy-MM-dd h:mm a').parse(editedDeadlineDateTime);
+      DocumentReference taskRef =
+          FirebaseFirestore.instance.collection('todo_list').doc(userId);
+      DocumentSnapshot userDocSnapshot = await taskRef.get();
+
+      if (userDocSnapshot.exists) {
+        Map<String, dynamic> userData =
+            userDocSnapshot.data() as Map<String, dynamic>;
+
+        Map<String, dynamic>? taskData =
+            userData[taskId] as Map<String, dynamic>?;
+
+        if (taskData != null) {
+          // Remove the old entry with the old ID
+          userData.remove(taskId);
+
+          // Create a new entry with the new ID (newTaskText)
+          userData[newTaskText] = {
+            'todoTask': newTaskText,
+            'deadlineDate': editedDeadlineDateTime,
+            'todoStatus': 'Pending',
+            'dueSoonNotificationSent': false,
+            'dueTomNotificationSent': false,
+            'dueSixNotificationSent': false,
+            'almostDueNotificationSent': false,
+            'overdueNotificationSent': false,
+            // Other fields if needed
+          };
+
+          // Update the Firestore document with the modified data
+          await taskRef.set(userData);
+        }
+
+        // Calculate dates for notifications
+        DateTime oneWeekBefore = selectedDateTime.subtract(Duration(days: 7));
+        DateTime oneDayBefore = selectedDateTime.subtract(Duration(days: 1));
+        DateTime sixHoursBefore = selectedDateTime.subtract(Duration(hours: 6));
+        DateTime oneHourBefore = selectedDateTime.subtract(Duration(hours: 1));
+        DateTime dueTime = selectedDateTime;
+
+        print('Sample: $sixHoursBefore');
+
+        // Schedule notifications for each date with unique IDs
+        scheduleNotification('Task Due Soon', 'id_1', oneWeekBefore,
+            'Task "$newTaskText" is due next week.', newTaskText);
+        scheduleNotification('Task Due Tomorrow', 'id_2', oneDayBefore,
+            'Task "$newTaskText" is due tomorrow.', newTaskText);
+        scheduleNotification('Task Due in 6 Hours', 'id_3', sixHoursBefore,
+            'Task "$newTaskText" is due within 6 hours.', newTaskText);
+        scheduleNotification('Task Almost Due', 'id_4', oneHourBefore,
+            'Task "$newTaskText" is almost due.', newTaskText);
+        scheduleNotification('Task Overdue', 'id_5', dueTime,
+            'Task "$newTaskText" is overdue.', newTaskText);
+      }
+      await getToDo();
+      Navigator.of(context).pop();
+    } catch (error) {
+      print('Error updating task: $error');
+
+      setState(() {
+        _isLoading = false; // Close loading dialog on error
+      });
+      print('Error updating task: $error');
+
+      // Close the loading dialog if an error occurs
+      Navigator.of(context, rootNavigator: true).pop();
+
+      // Show an error message to the user if needed
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Error'),
+            content: Text('Failed to update task. Please try again.'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+  String formattedDateTime(DateTime date, TimeOfDay time) {
+    try {
+      String formattedDate = DateFormat('yyyy-MM-dd').format(date);
+      String formattedTime = formatTimeOfDay(time);
+      return '$formattedDate $formattedTime';
+    } catch (e) {
+      print('Error formatting date: $e');
+      return '';
+    }
+  }
+
+  String formatTimeOfDay(TimeOfDay time) {
+    try {
+      String period = time.period == DayPeriod.am ? 'AM' : 'PM';
+      int hour = time.hourOfPeriod;
+      int minute = time.minute;
+      // Adjust the hour to 12-hour format without leading zero
+      hour = hour == 0 ? 12 : hour; // Handle 12 AM
+      String formatted = '${hour}:${minute.toString().padLeft(2, '0')} $period';
+      return formatted;
+    } catch (e) {
+      print('Error formatting time: $e');
+      return '';
+    }
+  }
+
+  String formattedDate(DateTime date) {
+    try {
+      // Format the DateTime object for displaying just the date
+      return DateFormat('yyyy-MM-dd').format(date);
+      // Adjust the date format according to your requirements
+    } catch (e) {
+      print('Error formatting date: $e');
+      // Handle the error as needed
+      return ''; // Return empty string in case of an error
+    }
+  }
+
+  String formattedTime(TimeOfDay time) {
+    try {
+      String period = time.period == DayPeriod.am ? 'AM' : 'PM';
+      int hour = time.hourOfPeriod;
+      int minute = time.minute;
+
+      // Adjust the hour to 12-hour format
+      if (hour == 0) {
+        hour = 12; // 12 AM
+      } else if (hour > 12) {
+        hour -= 12; // Convert to 12-hour format for PM hours
+      }
+
+      // Create a formatted string in 12-hour format (h:mm AM/PM)
+      String formatted = '${hour}:${minute.toString().padLeft(2, '0')} $period';
+
+      return formatted;
+      // Adjust the time format according to your requirements
+    } catch (e) {
+      print('Error formatting time: $e');
+      // Handle the error as needed
+      return ''; // Return empty string in case of an error
+    }
+  }
+
+  Future<void> scheduleNotification(String title, String id,
+      DateTime scheduledTime, String body, String group) async {
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
-        id: scheduledTime.millisecondsSinceEpoch.hashCode,
+        id: id.hashCode,
         channelKey: 'basic_channel', // Replace with your channel key
+        groupKey: group,
         title: title,
         body: body,
       ),
       schedule: NotificationCalendar.fromDate(date: scheduledTime),
     );
+    print("Schedule group: $id");
+  }
+
+  Future<void> cancelScheduledNotifications(String groupKey) async {
+    try {
+      // Cancel notifications based on the provided string ID
+      await AwesomeNotifications().cancelNotificationsByGroupKey(groupKey);
+      print("Cancelled notifications with group key: $groupKey");
+
+      // Fetch documents from Firestore based on the provided string ID
+      QuerySnapshot querySnapshot = await _notifreference.get();
+      List<QueryDocumentSnapshot> notifications = querySnapshot.docs;
+
+      for (QueryDocumentSnapshot doc in notifications) {
+        String docId = doc.id;
+        if (docId.startsWith(groupKey)) {
+          await _notifreference.doc(docId).delete();
+        }
+      }
+    } catch (e) {
+      print('Error cancelling notifications: $e');
+      // Handle the error as per your application's requirements
+    }
   }
 
   Future<void> getToDo() async {
@@ -846,17 +1410,22 @@ class ToDoState extends State<ToDo> {
               deadlineDate: taskData['deadlineDate'] ?? '',
               todoTask: taskData['todoTask'] ?? '',
               todoStatus: taskData['todoStatus'] ?? '',
-              dueSoonNotificationSent: taskData['dueSoonNotificationSent'] as bool? ?? false,
-              dueTomNotificationSent: taskData['dueTomNotificationSent'] as bool? ?? false,
-              dueSixNotificationSent: taskData['dueSixNotificationSent'] as bool? ?? false,
-              almostDueNotificationSent: taskData['almostDueNotificationSent'] as bool? ?? false,
-              overdueNotificationSent: taskData['overdueNotificationSent'] as bool? ?? false,
-
+              dueSoonNotificationSent:
+                  taskData['dueSoonNotificationSent'] as bool? ?? false,
+              dueTomNotificationSent:
+                  taskData['dueTomNotificationSent'] as bool? ?? false,
+              dueSixNotificationSent:
+                  taskData['dueSixNotificationSent'] as bool? ?? false,
+              almostDueNotificationSent:
+                  taskData['almostDueNotificationSent'] as bool? ?? false,
+              overdueNotificationSent:
+                  taskData['overdueNotificationSent'] as bool? ?? false,
             );
           }).toList();
 
           setState(() {
             todoList = tasksList;
+            sortTodoListByDeadline(); // Sort todoList after setting state
           });
         } else {
           setState(() {
@@ -875,6 +1444,7 @@ class ToDoState extends State<ToDo> {
 
           setState(() {
             completedList = cTasksList;
+            sortCompletedListByDeadline(); // Sort completedList after setting state
           });
         } else {
           setState(() {

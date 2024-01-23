@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
@@ -143,31 +144,40 @@ class _CalendarState extends State<Calendar> {
   }
 
   @override
-Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) {
+    return Scaffold(
       drawer: const AppDrawer(),
       appBar: AppBar(
         automaticallyImplyLeading: false,
         leading: Builder(
-          builder: (context) => IconButton(
-            icon: ClipOval(
-              child: Image.asset(
-                'assets/images/user.png',
-                width: 24,
-                height: 24,
+          builder: (context) {
+            // Fetch the current user details
+            final user = FirebaseAuth.instance.currentUser;
+            return IconButton(
+              icon: ClipOval(
+                child: user != null && user.photoURL != null
+                    ? Image.network(
+                        user.photoURL!,
+                        width: 24,
+                        height: 24,
+                      )
+                    : Image.asset(
+                        'assets/images/user.png',
+                        width: 24,
+                        height: 24,
+                      ),
               ),
-            ),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            );
+          },
         ),
         title: Image.asset('assets/images/lpu_title.png'),
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const Help()),
-              );
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => const Help()));
             },
           ),
         ],
@@ -177,7 +187,7 @@ Widget build(BuildContext context) => Scaffold(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 32, 16, 64),
+              padding: const EdgeInsets.fromLTRB(16, 32, 16, 30),
               child: Container(
               alignment: Alignment.center,
               child: Image.asset(
@@ -263,4 +273,5 @@ Widget build(BuildContext context) => Scaffold(
       ),
     );
 
+}
 }
