@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:lpu_app/views/notifications.dart';
 import 'package:provider/provider.dart';
 import 'package:lpu_app/views/components/app_drawer.dart';
 import 'package:lpu_app/views/help.dart';
@@ -63,14 +64,32 @@ class _HandbookMenuState extends State<HandbookMenu> {
           title: Image.asset('assets/images/lpu_title.png'),
           actions: [
             IconButton(
-              icon: const Icon(Icons.help_outline),
+              icon: const Icon(Icons.notifications_none),
               onPressed: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => const Help()));
+                Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) =>
+                        const Notifications(),
+                    transitionsBuilder:
+                        (context, animation, secondaryAnimation, child) {
+                      const begin = Offset(1.0, 0.0);
+                      const end = Offset.zero;
+                      const curve = Curves.easeInOut;
+                      var tween = Tween(begin: begin, end: end)
+                          .chain(CurveTween(curve: curve));
+                      var offsetAnimation = animation.drive(tween);
+
+                      return SlideTransition(
+                          position: offsetAnimation, child: child);
+                    },
+                  ),
+                );
               },
             ),
           ],
         ),
+        backgroundColor: Colors.white,
         body: Stack(children: [
           Positioned.fill(
             child: Container(

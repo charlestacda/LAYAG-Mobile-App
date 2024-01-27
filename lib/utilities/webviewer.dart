@@ -5,16 +5,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:lpu_app/config/app_config.dart';
+import 'package:lpu_app/views/payment_content.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:external_app_launcher/external_app_launcher.dart';
-
 
 class WebViewer extends StatefulWidget {
   final String initialUrl;
   final String pageTitle;
   final String type;
 
-  const WebViewer({Key? key, required this.initialUrl, required this.pageTitle, required this.type})
+  const WebViewer(
+      {Key? key,
+      required this.initialUrl,
+      required this.pageTitle,
+      required this.type})
       : super(key: key);
 
   @override
@@ -33,6 +37,7 @@ class _WebViewerState extends State<WebViewer> {
   String userLname = '';
   String userFname = '';
   String userCollege = '';
+  String password = '';
 
   @override
   void initState() {
@@ -40,7 +45,6 @@ class _WebViewerState extends State<WebViewer> {
     _fetchUserData().then((_) {
       // The user data has been fetched, now we can access it
       setState(() {
-        userEmail = _userData?['userEmail'] ?? '';
         userNo = _userData?['userNo'] ?? '';
         userLname = _userData?['userLastName'] ?? '';
         userFname = _userData?['userFirstName'] ?? '';
@@ -68,7 +72,13 @@ class _WebViewerState extends State<WebViewer> {
                 ],
               ),
               actions: [
-                // Add the new button here
+                if (_shouldShowExternalAppButton())
+                  IconButton(
+                    icon: Icon(Icons.help_center), // Use your desired icon
+                    onPressed: () {
+                      _openPaymentContent();
+                    },
+                  ),
                 if (_shouldShowExternalAppButton())
                   IconButton(
                     icon: Icon(Icons.open_in_new), // Use your desired icon
@@ -217,44 +227,121 @@ class _WebViewerState extends State<WebViewer> {
   }
 
   void _openExternalApp() async {
-  final currentUrl = widget.initialUrl;
-  String appStoreUrl = '';
+    final currentUrl = widget.initialUrl;
+    String appStoreUrl = '';
 
-  if (currentUrl == 'online.bpi.com.ph') {
-    appStoreUrl = 'com.bpi.ng.app';
-  } else if (currentUrl == 'online.bdo.com.ph') {
-    appStoreUrl = 'ph.com.bdo.retail';
-  } else if (currentUrl == 'onlinebanking.metrobank.com.ph') {
-    appStoreUrl = 'ph.com.metrobank.mcc.mbonline';
-  } else if (currentUrl == 'new.gcash.com'){
-    appStoreUrl = 'com.globe.gcash.android';
+    if (currentUrl == 'online.bpi.com.ph') {
+      appStoreUrl = 'com.bpi.ng.app';
+    } else if (currentUrl == 'online.bdo.com.ph') {
+      appStoreUrl = 'ph.com.bdo.retail';
+    } else if (currentUrl == 'onlinebanking.metrobank.com.ph') {
+      appStoreUrl = 'ph.com.metrobank.mcc.mbonline';
+    } else if (currentUrl == 'new.gcash.com') {
+      appStoreUrl = 'com.globe.gcash.android';
+    }
+
+    // Check if the app can be launched
+    await LaunchApp.openApp(
+      androidPackageName: appStoreUrl,
+      // openStore: false
+    );
   }
-
-  // Check if the app can be launched
-  await LaunchApp.openApp(
-                  androidPackageName: appStoreUrl,
-                  // openStore: false
-                );
-}
-
-
 
   Future<void> _fetchUserData() async {
     User? user = FirebaseAuth.instance.currentUser;
 
     if (user != null) {
-      // Fetch user data from Firestore
+      // Fetch user data and password manager from Firestore
       DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .get();
 
+      Map<String, dynamic>? userData =
+          userSnapshot.data() as Map<String, dynamic>?;
+
+      // Update the state with user data
       setState(() {
         _user = user;
-        _userData = userSnapshot.data() as Map<String, dynamic>?;
+        _userData = userData;
+
+        // Get the email and password based on the portal title (pageTitle)
+        if (userData != null && userData.containsKey('passwordManager')) {
+          List<dynamic> portals = userData['passwordManager']['portals'];
+          for (var portal in portals) {
+            if (portal.isNotEmpty) {
+              String portalTitle = portal.keys.first;
+              if (portalTitle == widget.pageTitle) {
+                Map<String, dynamic> portalDetails = portal[portalTitle];
+                userEmail = portalDetails['email/user'] ?? '';
+                password = portalDetails['password'] ?? '';
+                break; // Stop searching after finding the matching portal
+              }
+            }
+          }
+        }
       });
     }
   }
+
+  Future<Map<String, dynamic>?> fetchPaymentMethodData() async {
+    try {
+      QuerySnapshot<Map<String, dynamic>> querySnapshot = await FirebaseFirestore
+          .instance
+          .collection('payment_procedures')
+          .where('channels', isEqualTo: widget.pageTitle)
+          .limit(1) // Limit the result to 1 document
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        return querySnapshot.docs.first.data();
+      } else {
+        // Handle the case where no matching document is found
+        print('No matching document for pageTitle: ${widget.pageTitle}');
+        return null;
+      }
+    } catch (e) {
+      // Handle any errors that occurred during the query
+      print('Error fetching payment method data: $e');
+      return null;
+    }
+  }
+
+  void _openPaymentContent() async {
+  // Fetch payment method data based on the pageTitle
+  Map<String, dynamic>? paymentMethodData = await fetchPaymentMethodData();
+
+  if (paymentMethodData != null) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: PaymentContent(paymentMethod: paymentMethodData),
+        );
+      },
+    );
+  } else {
+    // Handle the case where no data is found
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Error'),
+          content: Text('No data found for pageTitle: ${widget.pageTitle}'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 
   Future<bool> _onWillPop() async {
     return (await showDialog(
@@ -327,12 +414,14 @@ class _WebViewerState extends State<WebViewer> {
             loginfmt.value = '$userEmail'; 
           }
 
-        
-          
+          var usernameInput = document.querySelector('input[placeholder="Username"]');
+          if (usernameInput) {
+            usernameInput.value = '$userEmail';
+          }
 
-          var txtUser = document.getElementsByName('txtUser')[0];
-          if (txtUser) {
-            txtUser.value = '$userNo';
+          var emailInput = document.querySelector('input[placeholder="Email"]');
+          if (emailInput) {
+            emailInput.value = '$userEmail';
           }
 
           var Lname = document.getElementsByName('Lname')[0];
@@ -345,6 +434,11 @@ class _WebViewerState extends State<WebViewer> {
             Fname.value = '$userFname';
           }
 
+          var emailInput = document.querySelector('input[type="email"]');
+          if (emailInput) {
+            emailInput.value = '$userEmail';
+          }
+
           var studentNo = document.getElementsByName('studentNo')[0];
           if (studentNo) {
             studentNo.value = '$userNo';
@@ -353,6 +447,11 @@ class _WebViewerState extends State<WebViewer> {
           var email = document.getElementsByName('email')[0];
           if (email) {
             email.value = '$userEmail';
+          }
+
+          var loginName = document.getElementsByName('loginName')[0];
+          if (loginName) {
+            loginName.value = '$userEmail';
           }
 
           var dept = document.getElementsByName('dept')[0];
@@ -370,7 +469,30 @@ class _WebViewerState extends State<WebViewer> {
           dept.dispatchEvent(event);
         }
 
+          var passwordInput = document.querySelector('input[type="password"]');
+          if (passwordInput) {
+            passwordInput.value = '$password';
+          }
 
+          var password = document.getElementsByName('password')[0];
+          if (password) {
+            password.value = '$password'; 
+          }
+
+          var password = document.getElementsById('password')[0];
+          if (password) {
+            password.value = '$password'; 
+          }
+
+          var passworedInput = document.querySelector('input[placeholder="Password"]');
+          if (passworedInput) {
+            passworedInput.value = '$password';
+          }
+
+          var txtUser = document.getElementsByName('txtUser')[0];
+          if (txtUser) {
+            txtUser.value = '$userNo';
+          }
 
         """,
       );

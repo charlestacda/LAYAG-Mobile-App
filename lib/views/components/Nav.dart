@@ -21,7 +21,7 @@ class BottomNavState extends State<NewNavigation> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: const [Calendar(), ToDo(), Home(), HandbookMenu(), AccountSettings()][currentIndex],
+      body: const [Calendar(), ToDo(), Home(), HandbookMenu()][currentIndex],
       backgroundColor: Colors.white,
       bottomNavigationBar: CurvedNavigationBar(
         index: currentIndex,
@@ -45,10 +45,6 @@ class BottomNavState extends State<NewNavigation> {
           ),
           Icon(
             Icons.book_outlined,
-            color: Colors.white,
-          ),
-          Icon(
-            Icons.person_outlined,
             color: Colors.white,
           ),
         ],

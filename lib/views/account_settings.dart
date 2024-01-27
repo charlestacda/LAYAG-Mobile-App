@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:lpu_app/views/components/app_drawer.dart';
 import 'package:lpu_app/views/edit_profile.dart';
 import 'package:lpu_app/views/change_password.dart';
 import 'package:lpu_app/config/app_config.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:lpu_app/views/notifications.dart';
 
 class AccountSettings extends StatefulWidget {
   const AccountSettings({Key? key}) : super(key: key);
@@ -14,6 +17,7 @@ class _AccountSettingsState extends State<AccountSettings> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const AppDrawer(),
       appBar: AppBar(
         automaticallyImplyLeading: true,
         backgroundColor: Colors.white,
@@ -26,7 +30,7 @@ class _AccountSettingsState extends State<AccountSettings> {
         ),
       ),
       backgroundColor: Colors.white,
-      body: SingleChildScrollView(
+       body: SingleChildScrollView(
         child: Container(
           padding: const EdgeInsets.only(left: 16, top: 15, right: 16),
           child: Column(

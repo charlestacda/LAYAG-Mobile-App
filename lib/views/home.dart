@@ -46,6 +46,7 @@ class HomeState extends State<Home> {
   DateTime lastCacheRefresh = DateTime(0);
   final FirebaseAnalytics analytics = FirebaseAnalytics.instance;
   late User? _user;
+  late String userType;
 
   @override
   void initState() {
@@ -84,6 +85,7 @@ class HomeState extends State<Home> {
         if (snapshot.exists) {
           final userData = snapshot.data() as Map<String, dynamic>;
           final String fetchedUserType = userData['userType'] ?? '';
+          userType = userData['userType'] ?? '';
 
           Provider.of<UserTypeProvider>(context, listen: false)
               .setUserType(fetchedUserType);
@@ -288,12 +290,30 @@ class HomeState extends State<Home> {
           IconButton(
             icon: const Icon(Icons.notifications_none),
             onPressed: () {
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const Notifications()));
+              Navigator.push(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                      const Notifications(),
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                    const begin = Offset(1.0, 0.0);
+                    const end = Offset.zero;
+                    const curve = Curves.easeInOut;
+                    var tween = Tween(begin: begin, end: end)
+                        .chain(CurveTween(curve: curve));
+                    var offsetAnimation = animation.drive(tween);
+
+                    return SlideTransition(
+                        position: offsetAnimation, child: child);
+                  },
+                ),
+              );
             },
           ),
         ],
       ),
+      backgroundColor: Colors.white,
       body: SingleChildScrollView(
         child: Center(
           child: Column(
@@ -322,54 +342,697 @@ class HomeState extends State<Home> {
                         ...otherPortals.map((portal) {
                           return buildPortalCard(portal);
                         }),
-                        GestureDetector(
-      onTap: () {
-        //openPaymentDialog(paymentPortals);
-      },
-      child: Card(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.0),
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Color(int.parse("#00a62d".replaceAll("#", "0xFF"))),
-            borderRadius: BorderRadius.circular(8.0),
-          ),
-          child: Column(
-            children: [
-              Expanded(
-                child: Image.asset(
-                  'assets/images/payment.png', // Add your asset image path here
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Payment Channels',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Color(0xFFFFFFFF),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                        if (otherPortals
+                            .isNotEmpty) // Only display if other portals exist
+                          GestureDetector(
+                            onTap: () {
+                              openPaymentDialog(paymentPortals);
+                            },
+                            child: Card(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Color(int.parse(
+                                      "#00a62d".replaceAll("#", "0xFF"))),
+                                  borderRadius: BorderRadius.circular(8.0),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      child: Image.asset(
+                                        'assets/images/payment.png',
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Payment Channels',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: Color(0xFFFFFFFF),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
       ),
-    ),
-  ],
-),
-            ],
-            ),
-          ),
-          ],
-          ),
-        ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          reauthenticateUserBeforeOpeningDialog(context);
+        },
+        child: Icon(Icons.vpn_key),
+        backgroundColor:
+            AppConfig.appLightRedTheme, // Change this to your desired color
       ),
     );
   }
+
+  void reauthenticateUserBeforeOpeningDialog(BuildContext context) {
+    TextEditingController passwordController = TextEditingController(text: '');
+    bool isLoading = false;
+    bool showPassword = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text(
+                'PASSWORD MANAGER',
+                style: TextStyle(
+                  fontFamily: 'Futura',
+                  color: AppConfig.appSecondaryTheme,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Enter your password first',
+                      style: TextStyle(),
+                    ),
+                  ),
+                  TextField(
+                    controller: passwordController,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      suffixIcon: IconButton(
+                        icon: Icon(showPassword
+                            ? Icons.visibility
+                            : Icons.visibility_off),
+                        onPressed: () {
+                          setState(() {
+                            showPassword = !showPassword;
+                          });
+                        },
+                      ),
+                    ),
+                    obscureText: !showPassword,
+                  ),
+                  SizedBox(height: 16),
+                  isLoading
+                      ? CircularProgressIndicator()
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment
+                              .end, // Align buttons to the right
+                          children: [
+                            TextButton(
+                              onPressed: () async {
+                                Navigator.pop(context);
+                              },
+                              child: Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  fontFamily: 'Futura',
+                                  color: Colors.grey[700],
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ),
+                            ElevatedButton(
+                              onPressed: () async {
+                                String enteredPassword =
+                                    passwordController.text.trim();
+
+                                if (enteredPassword.isNotEmpty) {
+                                  setState(() {
+                                    isLoading = true;
+                                  });
+
+                                  if (await reauthenticateUser(
+                                      enteredPassword)) {
+                                    Navigator.pop(
+                                        context); // Close reauthentication dialog
+                                    showPasswordManagerDialog(userType);
+                                  } else {
+                                    setState(() {
+                                      isLoading = false;
+                                    });
+
+                                    // Display an error message or handle incorrect password
+                                    // For simplicity, you can show a SnackBar
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Incorrect password!'),
+                                      ),
+                                    );
+                                  }
+                                } else {
+                                  // Handle case where entered password is blank
+                                  print('Entered password is blank');
+                                }
+                              },
+                              child: Text('Enter'),
+                            ),
+                          ],
+                        ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<bool> reauthenticateUser(String enteredPassword) async {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        print('Entered Password: $enteredPassword');
+
+        // Use Firebase Authentication to reauthenticate the user
+        AuthCredential credential = EmailAuthProvider.credential(
+            email: user.email!, password: enteredPassword);
+
+        await user.reauthenticateWithCredential(credential);
+
+        print('Reauthentication Successful');
+        return true; // Reauthentication successful
+      }
+    } catch (e) {
+      print('Reauthentication error: $e');
+    }
+
+    print('Reauthentication Failed');
+    return false; // Reauthentication failed
+  }
+
+  void showPasswordManagerDialog(String userType) async {
+    User? user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      // Fetch user document
+      DocumentReference userDocRef =
+          FirebaseFirestore.instance.collection('users').doc(user.uid);
+
+      DocumentSnapshot userDoc = await userDocRef.get();
+
+      // Check if the user document exists and has the 'passwordManager' field
+      if (userDoc.exists &&
+          (userDoc.data() as Map<String, dynamic>)
+              .containsKey('passwordManager')) {
+        // Get the existing passwordManager map field
+        Map<String, dynamic> passwordManager =
+            (userDoc.data() as Map<String, dynamic>)['passwordManager'];
+
+        // Fetch all portal titles
+        List portalTitles = passwordManager['portals'] != null
+            ? (passwordManager['portals'] as List)
+                .map((item) => item.keys.first)
+                .toList()
+            : [];
+
+        // Filter portals based on user type
+        List<Portal> filteredPortals = portals.where((portal) {
+          bool visibleToUser = false;
+          if (userType == 'Student') {
+            visibleToUser = portal.visibleToStudents;
+          } else if (userType == 'Faculty') {
+            visibleToUser = portal.visibleToEmployees;
+          } else if (userType == 'Admin') {
+            visibleToUser = true; // Admin has access to all portals
+          }
+          return visibleToUser;
+        }).toList();
+
+        // Update passwordManager with filtered portal titles
+        for (Portal portal in filteredPortals) {
+          // Check if the portal already exists in the passwordManager
+          if (!portalTitles.contains(portal.title)) {
+            // If it doesn't exist, add the portal with default values
+            passwordManager['portals'].add({
+              portal.title: {
+                'email/user': user.email,
+                'password': '',
+              },
+            });
+            // Add the portal title to the list
+            portalTitles.add(portal.title);
+          }
+        }
+
+        // Update the user document with the new passwordManager
+        await userDocRef
+            .set({'passwordManager': passwordManager}, SetOptions(merge: true));
+
+        showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text(
+          'PASSWORD MANAGER',
+          style: TextStyle(
+            fontFamily: 'Futura',
+            color: AppConfig.appSecondaryTheme,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: 8),
+            if (portalTitles.isNotEmpty)
+              SizedBox(
+                width: double.maxFinite, // Make the SizedBox take up maximum width
+                height: 285, // Set a specific height for the ListView
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: portalTitles.length,
+                  itemBuilder: (BuildContext context, int index) {
+                    return InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        String selectedPortalTitle = portalTitles[index];
+                        showPortalDetailsDialog(
+                          selectedPortalTitle,
+                          passwordManager[selectedPortalTitle],
+                          passwordManager,
+                        );
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 4.0),
+                        padding: const EdgeInsets.all(8.0),
+                        decoration: BoxDecoration(
+                          color: AppConfig.appSecondaryTheme,
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        child: Text(
+                          portalTitles[index],
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              )
+            else
+              Text('No portal titles available.'),
+            SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text(
+                    'Exit',
+                    style: TextStyle(
+                      fontFamily: 'Futura',
+                      color: Colors.grey[700],
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    },
+  );
+      } else {
+        // If 'passwordManager' field doesn't exist, create a new one
+        Map<String, dynamic> passwordManager = {'portals': []};
+
+        // Fetch all portal titles
+        List<String> portalTitles =
+            portals.map((portal) => portal.title).toList();
+
+        // Filter portals based on user type
+        List<Portal> filteredPortals = portals.where((portal) {
+          bool visibleToUser = false;
+          if (userType == 'Student') {
+            visibleToUser = portal.visibleToStudents;
+          } else if (userType == 'Faculty') {
+            visibleToUser = portal.visibleToEmployees;
+          } else if (userType == 'Admin') {
+            visibleToUser = true; // Admin has access to all portals
+          }
+          return visibleToUser;
+        }).toList();
+
+        // Update passwordManager with filtered portal titles
+        passwordManager['portals'] = filteredPortals
+            .map((portal) => {
+                  portal.title: {
+                    'email/user': user.email,
+                    'password': '',
+                  },
+                })
+            .toList();
+
+        // Update the user document with the new passwordManager
+        await userDocRef
+            .set({'passwordManager': passwordManager}, SetOptions(merge: true));
+
+        showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text(
+          'PASSWORD MANAGER',
+          style: TextStyle(
+            fontFamily: 'Futura',
+            color: AppConfig.appSecondaryTheme,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: 8),
+            if (portalTitles.isNotEmpty)
+              SizedBox(
+                width: double.maxFinite, // Make the SizedBox take up maximum width
+                height: 285, // Set a specific height for the ListView
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: portalTitles.length,
+                  itemBuilder: (BuildContext context, int index) {
+                    return InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        String selectedPortalTitle = portalTitles[index];
+                        showPortalDetailsDialog(
+                          selectedPortalTitle,
+                          passwordManager[selectedPortalTitle],
+                          passwordManager,
+                        );
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 4.0),
+                        padding: const EdgeInsets.all(8.0),
+                        decoration: BoxDecoration(
+                          color: AppConfig.appSecondaryTheme,
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        child: Text(
+                          portalTitles[index],
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              )
+            else
+              Text('No portal titles available.'),
+            SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text(
+                    'Exit',
+                    style: TextStyle(
+                      fontFamily: 'Futura',
+                      color: Colors.grey[700],
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    },
+  );
+      }
+    }
+  }
+
+  void showPortalDetailsDialog(
+      String portalTitle,
+      Map<String, dynamic>? portalDetails,
+      Map<String, dynamic> passwordManager) {
+    TextEditingController emailController = TextEditingController();
+    TextEditingController passwordController = TextEditingController();
+    bool showPassword = false;
+    bool isLoading = false;
+
+    Stream<DocumentSnapshot<Map<String, dynamic>>> portalStream =
+        FirebaseFirestore.instance
+            .collection('users')
+            .doc(FirebaseAuth.instance.currentUser?.uid)
+            .snapshots();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: portalStream,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData || snapshot.data == null) {
+              return CircularProgressIndicator(); // Loading indicator while fetching data
+            }
+
+            Map<String, dynamic>? portalDetailsMap;
+
+            List<dynamic> portalsList = (snapshot.data
+                ?.data()?['passwordManager']['portals'] as List<dynamic>);
+
+            for (var item in portalsList) {
+              if (item is Map<String, dynamic> &&
+                  item.containsKey(portalTitle)) {
+                portalDetailsMap = item[portalTitle];
+                break;
+              }
+            }
+
+            // Populate the controllers with existing data if available
+            emailController.text =
+                (portalDetailsMap ?? const {})['email/user'] ?? '';
+            passwordController.text =
+                (portalDetailsMap ?? const {})['password'] ?? '';
+
+            return StatefulBuilder(
+              builder: (context, setState) {
+                return AlertDialog(
+                  title: Text(portalTitle),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: emailController,
+                        decoration: InputDecoration(labelText: 'Email/User'),
+                      ),
+                      TextField(
+                        controller: passwordController,
+                        obscureText: !showPassword,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              showPassword
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                showPassword = !showPassword;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () async {
+                              Navigator.pop(context);
+                              showPasswordManagerDialog(userType);
+                            },
+                            child: Text(
+                              'Back',
+                              style: TextStyle(
+                                fontFamily: 'Futura',
+                                color: Colors.grey[700],
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: () async {
+                              // Save button logic
+                              await savePortalDetails(portalTitle, {
+                                'email/user': emailController.text,
+                                'password': passwordController.text,
+                              });
+                              Navigator.pop(context);
+                              showPasswordManagerDialog(userType);
+                            },
+                            child: Text('Save'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> savePortalDetails(
+      String portalTitle, Map<String, dynamic> details) async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        // Fetch user document
+        DocumentReference userDocRef =
+            FirebaseFirestore.instance.collection('users').doc(user.uid);
+        DocumentSnapshot userDoc = await userDocRef.get();
+
+        if (userDoc.exists) {
+          Map<String, dynamic>? userData =
+              userDoc.data() as Map<String, dynamic>?;
+
+          Map<String, dynamic>? passwordManager = userData?['passwordManager'];
+
+          if (passwordManager != null &&
+              passwordManager.containsKey('portals')) {
+            List<dynamic> portalsList = passwordManager['portals'];
+
+            // Find the index of the portal with the given title
+            int portalIndex = portalsList.indexWhere((portal) {
+              return portal.containsKey(portalTitle);
+            });
+
+            if (portalIndex != -1) {
+              // If the portal with the given title exists, update its details
+              portalsList[portalIndex] = {portalTitle: details};
+            } else {
+              // If the portal with the given title doesn't exist, add a new one
+              portalsList.add({portalTitle: details});
+            }
+
+            // Update the user document with the modified passwordManager
+            await userDocRef.set({
+              'passwordManager': {'portals': portalsList}
+            }, SetOptions(merge: true));
+          }
+        }
+      } catch (e) {
+        print('Error saving portal details: $e');
+      }
+    }
+  }
+
+  void openPaymentDialog(List<Portal> paymentPortals) {
+  int crossAxisCount = 2;
+  double rowHeight = 145.0; // Adjust as needed based on your card content
+
+  int rowCount = (paymentPortals.length / crossAxisCount).ceil();
+  double gridViewHeight = rowCount * rowHeight;
+
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Payment Channels', style: TextStyle(fontSize: 16)),
+            Row(
+              children: [
+                SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: IconButton(
+                    iconSize: 20,
+                    icon: Icon(Icons.help_center),
+                    onPressed: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const PaymentProcedures()));
+                    },
+                  ),
+                ),
+                SizedBox(width: 8),
+                SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: IconButton(
+                    iconSize: 20,
+                    icon: Icon(Icons.close),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: gridViewHeight,
+          child: GridView.count(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 4.0,
+            mainAxisSpacing: 8.0,
+            children: paymentPortals.map((portal) {
+              return buildPortalCard(portal);
+            }).toList(),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+
+
 
   Widget buildPortalCard(Portal portal) {
     Color cardColor = Color(int.parse(portal.color.replaceAll("#", "0xFF")));

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:lpu_app/views/notifications.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import '../utils.dart';
@@ -25,7 +26,6 @@ class _CalendarState extends State<Calendar> {
   DateTime? _rangeStart;
   DateTime? _rangeEnd;
   StreamSubscription<Map<DateTime, List<Event>>>? _eventsSubscription;
-  
 
   @override
   void initState() {
@@ -50,7 +50,8 @@ class _CalendarState extends State<Calendar> {
       setState(() {
         kEvents.clear();
         kEvents.addAll(eventsMap);
-        _selectedEvents.value = _getEventsForDay(_selectedDay!); // Update selected events
+        _selectedEvents.value =
+            _getEventsForDay(_selectedDay!); // Update selected events
       });
     });
   }
@@ -62,42 +63,42 @@ class _CalendarState extends State<Calendar> {
   }
 
   void _showEventDetails(Event event) {
-  final startTimeLocal = event.startDateTime.toLocal(); // Convert UTC to local time
-  final endTimeLocal = event.endDateTime.toLocal(); // Convert UTC to local time
+    final startTimeLocal =
+        event.startDateTime.toLocal(); // Convert UTC to local time
+    final endTimeLocal =
+        event.endDateTime.toLocal(); // Convert UTC to local time
 
-  final formattedStartTime = DateFormat('h:mm a').format(startTimeLocal);
-  final formattedEndTime = DateFormat('h:mm a').format(endTimeLocal);
+    final formattedStartTime = DateFormat('h:mm a').format(startTimeLocal);
+    final formattedEndTime = DateFormat('h:mm a').format(endTimeLocal);
 
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text('Event Details'),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Title: ${event.title}'),
-            Text('Description: ${event.description}'),
-            Text('Start Time: $formattedStartTime'),
-            Text('End Time: $formattedEndTime'),
-            Text('Location: ${event.location}'),
-          ],
-        ),
-        actions: <Widget>[
-          TextButton(
-            child: Text('Close'),
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Event Details'),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Title: ${event.title}'),
+              Text('Description: ${event.description}'),
+              Text('Start Time: $formattedStartTime'),
+              Text('End Time: $formattedEndTime'),
+              Text('Location: ${event.location}'),
+            ],
           ),
-        ],
-      );
-    },
-  );
-}
-
-
+          actions: <Widget>[
+            TextButton(
+              child: Text('Close'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   List<Event> _getEventsForDay(DateTime day) {
     return kEvents[day] ?? [];
@@ -174,14 +175,32 @@ class _CalendarState extends State<Calendar> {
         title: Image.asset('assets/images/lpu_title.png'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.help_outline),
+            icon: const Icon(Icons.notifications_none),
             onPressed: () {
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const Help()));
+              Navigator.push(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                      const Notifications(),
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                    const begin = Offset(1.0, 0.0);
+                    const end = Offset.zero;
+                    const curve = Curves.easeInOut;
+                    var tween = Tween(begin: begin, end: end)
+                        .chain(CurveTween(curve: curve));
+                    var offsetAnimation = animation.drive(tween);
+
+                    return SlideTransition(
+                        position: offsetAnimation, child: child);
+                  },
+                ),
+              );
             },
           ),
         ],
       ),
+      backgroundColor: Colors.white,
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -189,49 +208,49 @@ class _CalendarState extends State<Calendar> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 32, 16, 30),
               child: Container(
-              alignment: Alignment.center,
-              child: Image.asset(
-                'assets/images/school_calendar_header.png',
-                width: double.infinity,
+                alignment: Alignment.center,
+                child: Image.asset(
+                  'assets/images/school_calendar_header.png',
+                  width: double.infinity,
+                ),
               ),
             ),
-            ),
-          TableCalendar<Event>(
-            firstDay: kFirstDay,
-            lastDay: kLastDay,
-            focusedDay: _focusedDay,
-            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-            rangeStartDay: _rangeStart,
-            rangeEndDay: _rangeEnd,
-            calendarFormat: _calendarFormat,
-            rangeSelectionMode: _rangeSelectionMode,
-            eventLoader: _getEventsForDay,
-            startingDayOfWeek: StartingDayOfWeek.monday,
-            calendarStyle: CalendarStyle(
-              outsideDaysVisible: false,
-              todayDecoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color.fromARGB(255, 129, 126, 126),
+            TableCalendar<Event>(
+              firstDay: kFirstDay,
+              lastDay: kLastDay,
+              focusedDay: _focusedDay,
+              selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+              rangeStartDay: _rangeStart,
+              rangeEndDay: _rangeEnd,
+              calendarFormat: _calendarFormat,
+              rangeSelectionMode: _rangeSelectionMode,
+              eventLoader: _getEventsForDay,
+              startingDayOfWeek: StartingDayOfWeek.monday,
+              calendarStyle: CalendarStyle(
+                outsideDaysVisible: false,
+                todayDecoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color.fromARGB(255, 129, 126, 126),
+                ),
+                selectedDecoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFFA33334),
+                ),
               ),
-              selectedDecoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color(0xFFA33334),
-              ),
+              onDaySelected: _onDaySelected,
+              onRangeSelected: _onRangeSelected,
+              onFormatChanged: (format) {
+                if (_calendarFormat != format) {
+                  setState(() {
+                    _calendarFormat = format;
+                  });
+                }
+              },
+              onPageChanged: (focusedDay) {
+                _focusedDay = focusedDay;
+              },
             ),
-            onDaySelected: _onDaySelected,
-            onRangeSelected: _onRangeSelected,
-            onFormatChanged: (format) {
-              if (_calendarFormat != format) {
-                setState(() {
-                  _calendarFormat = format;
-                });
-              }
-            },
-            onPageChanged: (focusedDay) {
-              _focusedDay = focusedDay;
-            },
-          ),
-          const SizedBox(height: 8.0),
+            const SizedBox(height: 8.0),
             ValueListenableBuilder<List<Event>>(
               valueListenable: _selectedEvents,
               builder: (context, value, _) {
@@ -259,7 +278,7 @@ class _CalendarState extends State<Calendar> {
                               fontWeight: FontWeight.bold,
                             ),
                             overflow: TextOverflow.ellipsis,
-                              ),
+                          ),
                         ),
                       ),
                     );
@@ -272,6 +291,5 @@ class _CalendarState extends State<Calendar> {
         ),
       ),
     );
-
-}
+  }
 }

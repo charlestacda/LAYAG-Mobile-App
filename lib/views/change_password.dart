@@ -59,7 +59,7 @@ class _ChangePasswordState extends State<ChangePassword> {
             style: TextStyle(
               fontFamily: 'Futura',
               color: AppConfig.appSecondaryTheme,
-              fontSize: 16,
+              fontSize: 20,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -89,7 +89,7 @@ class _ChangePasswordState extends State<ChangePassword> {
                   fontFamily: 'Futura',
                   color: AppConfig.appSecondaryTheme,
                   fontSize: 14,
-                  fontWeight: FontWeight.w400,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ),

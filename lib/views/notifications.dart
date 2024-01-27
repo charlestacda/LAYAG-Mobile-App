@@ -225,30 +225,15 @@ class NotificationsState extends State<Notifications> {
   Widget build(BuildContext context) => Scaffold(
         drawer: const AppDrawer(),
         appBar: AppBar(
-        automaticallyImplyLeading: false,
-        leading: Builder(
-          builder: (context) {
-            // Fetch the current user details
-            final user = FirebaseAuth.instance.currentUser;
-            return IconButton(
-              icon: ClipOval(
-                child: user != null && user.photoURL != null
-                    ? Image.network(
-                        user.photoURL!,
-                        width: 24,
-                        height: 24,
-                      )
-                    : Image.asset(
-                        'assets/images/user.png',
-                        width: 24,
-                        height: 24,
-                      ),
-              ),
-              onPressed: () => Scaffold.of(context).openDrawer(),
-            );
-          },
+        automaticallyImplyLeading: true,
+        backgroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_outlined,
+          ),
+          color: AppConfig.appSecondaryTheme,
+          onPressed: () => Navigator.pop(context, false),
         ),
-        title: Image.asset('assets/images/lpu_title.png'),
       ),
         body: Column(
           children: [

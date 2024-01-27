@@ -11,6 +11,7 @@ import 'package:lpu_app/models/task_model.dart';
 import 'package:lpu_app/models/user_model.dart';
 import 'package:lpu_app/views/components/app_drawer.dart';
 import 'package:lpu_app/views/help.dart';
+import 'package:lpu_app/views/notifications.dart';
 import 'dart:async';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -423,14 +424,27 @@ class ToDoState extends State<ToDo> {
         ),
         title: Image.asset('assets/images/lpu_title.png'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.help_outline),
-            onPressed: () {
-              Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => const Help()));
-            },
-          ),
-        ],
+  IconButton(
+    icon: const Icon(Icons.notifications_none),
+    onPressed: () {
+      Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => const Notifications(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            const begin = Offset(1.0, 0.0);
+            const end = Offset.zero;
+            const curve = Curves.easeInOut;
+            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+            var offsetAnimation = animation.drive(tween);
+
+            return SlideTransition(position: offsetAnimation, child: child);
+          },
+        ),
+      );
+    },
+  ),
+],
       ),
         floatingActionButton: FloatingActionButton(
           shape: const RoundedRectangleBorder(
@@ -671,6 +685,7 @@ class ToDoState extends State<ToDo> {
             color: Colors.white,
           ),
         ),
+        backgroundColor: Colors.white,
         body: SingleChildScrollView(
           child: Center(
             child: Padding(

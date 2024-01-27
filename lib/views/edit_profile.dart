@@ -19,23 +19,20 @@ class EditProfile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
+    return Scaffold(
         appBar: AppBar(
-          automaticallyImplyLeading: true,
-          backgroundColor: Colors.white,
-          leading: IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios_outlined,
-            ),
-            color: AppConfig.appSecondaryTheme,
-            onPressed: () => Navigator.pop(context, false),
+        automaticallyImplyLeading: true,
+        backgroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_outlined,
           ),
+          color: AppConfig.appSecondaryTheme,
+          onPressed: () => Navigator.pop(context, false),
         ),
-        body: _EditProfile(), // Directly use _AccountSettings widget here
       ),
-      debugShowCheckedModeBanner: false,
-    );
+        body: _EditProfile(), // Directly use _AccountSettings widget here
+      );
   }
 }
 
@@ -132,6 +129,38 @@ class _EditProfileState extends State<_EditProfile> {
               studentLastName.text = currentUser.userLastName ?? '';
               college = currentUser.userCollege ?? '';
               profileImageURL = currentUser.userProfile ?? '';
+
+              isChanged =
+                  (studentFirstName.text != currentUser.userFirstName) ||
+                      (studentLastName.text != currentUser.userLastName) ||
+                      (college != currentUser.userCollege);
+            });
+          }
+        });
+      } catch (e) {
+        print("Error fetching user data: $e");
+        // Handle errors as needed
+      }
+    }
+  }
+
+  void fetchCollegeOnly() async {
+    User? getCurrentUser = FirebaseAuth.instance.currentUser;
+
+    if (getCurrentUser != null) {
+      currentUserID = getCurrentUser.uid;
+
+      try {
+        DocumentReference userDocRef =
+            FirebaseFirestore.instance.collection('users').doc(currentUserID);
+
+        userDocRef.snapshots().listen((DocumentSnapshot userSnapshot) {
+          currentUser =
+              UserModel.fromMap(userSnapshot.data() as Map<String, dynamic>);
+
+          if (mounted) {
+            setState(() {
+              college = currentUser.userCollege ?? '';
 
               isChanged =
                   (studentFirstName.text != currentUser.userFirstName) ||
@@ -461,7 +490,7 @@ class _EditProfileState extends State<_EditProfile> {
                       setState(() {
                         if (newCollege == college) {
                           isChanged = false;
-                          fetchUserData();
+                          fetchCollegeOnly();
                         } else {
                           college = newCollege;
                           isChanged = true;
@@ -518,7 +547,7 @@ class _EditProfileState extends State<_EditProfile> {
                                               fontFamily: 'Futura',
                                               color:
                                                   AppConfig.appSecondaryTheme,
-                                              fontSize: 16,
+                                              fontSize: 20,
                                               fontWeight: FontWeight.w600,
                                             ),
                                           ),
@@ -535,7 +564,7 @@ class _EditProfileState extends State<_EditProfile> {
                                           ),
                                         )
                                       : Padding(
-                                          padding: const EdgeInsets.all(16.0),
+                                          padding: const EdgeInsets.fromLTRB(16.0, 1.0, 16.0, 16.0),
                                           child: Text(
                                             'Are you sure you want to save the changes?',
                                           ),
@@ -568,7 +597,7 @@ class _EditProfileState extends State<_EditProfile> {
                                                 color:
                                                     AppConfig.appSecondaryTheme,
                                                 fontSize: 14,
-                                                fontWeight: FontWeight.w400,
+                                                fontWeight: FontWeight.w900,
                                               ),
                                             ),
                                             onPressed: isUpdating
@@ -661,7 +690,7 @@ class _EditProfileState extends State<_EditProfile> {
                   style: TextStyle(
                     fontFamily: 'Futura',
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 20,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

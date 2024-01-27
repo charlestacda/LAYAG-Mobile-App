@@ -10,8 +10,7 @@ class ContactInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
+    return Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: true,
           backgroundColor: Colors.white,
@@ -24,9 +23,7 @@ class ContactInfo extends StatelessWidget {
           ),
         ),
         body: const _ContactInfo(),
-      ),
-      debugShowCheckedModeBanner: false,
-    );
+      );
   }
 }
 

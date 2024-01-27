@@ -79,9 +79,7 @@ class AppDrawerState extends State<AppDrawer> {
       child: StreamBuilder<UserModel?>(
         stream: userDetailsStream,
         builder: (BuildContext context, AsyncSnapshot<UserModel?> snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return CircularProgressIndicator();
-          } else if (snapshot.hasData && snapshot.data != null) {
+          if (snapshot.hasData && snapshot.data != null) {
             UserModel user = snapshot.data!;
             return ListView(
               padding: EdgeInsets.zero,
@@ -128,7 +126,7 @@ class AppDrawerState extends State<AppDrawer> {
                     ),
                   ),
                   ListTile(
-                    leading: const Icon(Icons.class_outlined),
+                    leading: const Icon(Icons.payments_outlined),
                     title: const Text('Payment Procedure'),
                     onTap: () {
                       Navigator.push(
@@ -138,7 +136,7 @@ class AppDrawerState extends State<AppDrawer> {
                     },
                   ),
                   ListTile(
-                    leading: const Icon(Icons.person_outline_outlined),
+                    leading: const Icon(Icons.contact_mail_outlined),
                     title: const Text('Contact Info'),
                     onTap: () {
                       Navigator.push(
@@ -149,8 +147,8 @@ class AppDrawerState extends State<AppDrawer> {
                   ),
                   const Divider(),
                   ListTile(
-                    leading: const Icon(Icons.settings_outlined),
-                    title: const Text('Settings'),
+                    leading: const Icon(Icons.person_outline),
+                    title: const Text('Account Settings'),
                     onTap: () {
                       Navigator.push(
                           context,
@@ -170,28 +168,31 @@ class AppDrawerState extends State<AppDrawer> {
                   ),
                   const Divider(),
                   ListTile(
-                    leading: const Icon(Icons.exit_to_app_outlined),
-                    title: const Text('Log out'),
-                    onTap: () async {
-                      // Reset the 'dialogShown' flag to false during logout
-                      SharedPreferences prefs =
-                          await SharedPreferences.getInstance();
-                      prefs.setBool('dialogShown', false);
+            leading: const Icon(Icons.exit_to_app_outlined),
+            title: const Text('Log out'),
+            onTap: () async {
+              // Show confirmation dialog
+              bool logoutConfirmed = await showLogoutConfirmationDialog(context);
+              if (logoutConfirmed) {
+                // Reset the 'dialogShown' flag to false during logout
+                SharedPreferences prefs = await SharedPreferences.getInstance();
+                prefs.setBool('dialogShown', false);
 
-                      InAppWebViewController.clearAllCache();
+                InAppWebViewController.clearAllCache();
 
-                      // Perform the logout process
-                      await FirebaseAuth.instance.signOut();
+                // Perform the logout process
+                await FirebaseAuth.instance.signOut();
 
-                      // Navigate to the Login screen after successful logout
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (context) => const Login()),
-                        (route) =>
-                            false, // Remove all existing routes from the stack
-                      );
-                    },
-                  ),
+                // Navigate to the Login screen after successful logout
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const Login()),
+                  (route) =>
+                      false, // Remove all existing routes from the stack
+                );
+              }
+            },
+          ),
                 ],
               );
           } else {
@@ -200,5 +201,31 @@ class AppDrawerState extends State<AppDrawer> {
         },
       ),
     );
+  }
+
+  Future<bool> showLogoutConfirmationDialog(BuildContext context) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Logout"),
+          content: const Text("Are you sure you want to log out?"),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(false); // Close the dialog without logging out
+              },
+              child: const Text("No"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(true); // Close the dialog and proceed with logout
+              },
+              child: const Text("Log out"),
+            ),
+          ],
+        );
+      },
+    ) ?? false; // Return false if the dialog is dismissed
   }
 }

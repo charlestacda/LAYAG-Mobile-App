@@ -20,35 +20,38 @@ class PaymentProceduresState extends State<PaymentProcedures> {
   }
 
   Future<List<Map<String, dynamic>>> fetchPaymentMethods() async {
-  QuerySnapshot<Map<String, dynamic>> querySnapshot =
-      await FirebaseFirestore.instance.collection('payment_procedures')
-      .where('visible', isEqualTo: true) // Filter by 'visible' field equal to true
-      .orderBy('edited_on', descending: false) // Order by 'edited_on' field in descending order
-      .get();
-  
-  return querySnapshot.docs.map((doc) => doc.data()).toList();
-}
+    QuerySnapshot<Map<String, dynamic>> querySnapshot = await FirebaseFirestore
+        .instance
+        .collection('payment_procedures')
+        .where('visible',
+            isEqualTo: true) // Filter by 'visible' field equal to true
+        .orderBy('edited_on',
+            descending: false) // Order by 'edited_on' field in descending order
+        .get();
 
+    return querySnapshot.docs.map((doc) => doc.data()).toList();
+  }
 
   Widget _buildLogoImage(dynamic logoData) {
-  if (logoData is String) {
-    // If 'logoData' is a String (single URL), display the image
-    return Image.network(
-      logoData,
-      fit: BoxFit.contain,
-    );
-  } else if (logoData is List<dynamic> && logoData.isNotEmpty && logoData.first is String) {
-    // If 'logoData' is a List of URLs, choose the first URL to display
-    return Image.network(
-      logoData.first,
-      fit: BoxFit.contain,
-    );
-  } else {
-    // If the 'logoData' is not a String or a List of URLs, display a placeholder or handle accordingly
-    return Text('Invalid logo data');
+    if (logoData is String) {
+      // If 'logoData' is a String (single URL), display the image
+      return Image.network(
+        logoData,
+        fit: BoxFit.contain,
+      );
+    } else if (logoData is List<dynamic> &&
+        logoData.isNotEmpty &&
+        logoData.first is String) {
+      // If 'logoData' is a List of URLs, choose the first URL to display
+      return Image.network(
+        logoData.first,
+        fit: BoxFit.contain,
+      );
+    } else {
+      // If the 'logoData' is not a String or a List of URLs, display a placeholder or handle accordingly
+      return Text('Invalid logo data');
+    }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -82,41 +85,44 @@ class PaymentProceduresState extends State<PaymentProcedures> {
                 mainAxisSpacing: 8.0,
                 children: snapshot.data!.map((paymentMethod) {
                   return GestureDetector(
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PaymentContent(paymentMethod: paymentMethod),
-      ),
-    );
-  },
-  child: Card(
-  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-  child: Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(borderRadius: BorderRadius.circular(8.0)),
-    child: Center(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: <Widget>[
-          Expanded(
-            child: _buildLogoImage(paymentMethod['logo']),
-          ),
-          const SizedBox(height: 16),
-          Text(
-  paymentMethod['channels'] ?? 'Channel Not Available',
-  textAlign: TextAlign.center,
-  style: TextStyle(
-    fontWeight: FontWeight.bold,
-    fontSize: 14,
-  ),
-),
-        ],
-      ),
-    ),
-  ),
-),
-
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              PaymentContent(paymentMethod: paymentMethod),
+                        ),
+                      );
+                    },
+                    child: Card(
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0)),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8.0)),
+                        child: Center(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: <Widget>[
+                              Expanded(
+                                child: _buildLogoImage(paymentMethod['logo']),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                paymentMethod['channels'] ??
+                                    'Channel Not Available',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   );
                 }).toList(),
               ),
