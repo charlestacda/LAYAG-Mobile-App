@@ -35,6 +35,9 @@ class Home extends StatefulWidget {
 }
 
 class HomeState extends State<Home> {
+  int crossAxisCount = 3;
+  double crossAxisSpacing = 0.1;
+  double mainAxisSpacing = 1.0;
   bool isPopedUp = false;
   Random random = Random();
   int randomNumber = 0;
@@ -256,9 +259,9 @@ class HomeState extends State<Home> {
   @override
   Widget build(BuildContext context) {
     List<Portal> paymentPortals =
-        portals.where((portal) => portal.color == "#00a62d").toList();
+    portals.where((portal) => portal.color == "#00a62d").toList();
     List<Portal> otherPortals =
-        portals.where((portal) => portal.color != "#00a62d").toList();
+    portals.where((portal) => portal.color != "#00a62d").toList();
     return Scaffold(
       drawer: const AppDrawer(),
       appBar: AppBar(
@@ -271,15 +274,15 @@ class HomeState extends State<Home> {
               icon: ClipOval(
                 child: user != null && user.photoURL != null
                     ? Image.network(
-                        user.photoURL!,
-                        width: 24,
-                        height: 24,
-                      )
+                  user.photoURL!,
+                  width: 24,
+                  height: 24,
+                )
                     : Image.asset(
-                        'assets/images/user.png',
-                        width: 24,
-                        height: 24,
-                      ),
+                  'assets/images/user.png',
+                  width: 24,
+                  height: 24,
+                ),
               ),
               onPressed: () => Scaffold.of(context).openDrawer(),
             );
@@ -294,7 +297,7 @@ class HomeState extends State<Home> {
                 context,
                 PageRouteBuilder(
                   pageBuilder: (context, animation, secondaryAnimation) =>
-                      const Notifications(),
+                  const Notifications(),
                   transitionsBuilder:
                       (context, animation, secondaryAnimation, child) {
                     const begin = Offset(1.0, 0.0);
@@ -305,7 +308,9 @@ class HomeState extends State<Home> {
                     var offsetAnimation = animation.drive(tween);
 
                     return SlideTransition(
-                        position: offsetAnimation, child: child);
+                      position: offsetAnimation,
+                      child: child,
+                    );
                   },
                 ),
               );
@@ -325,25 +330,66 @@ class HomeState extends State<Home> {
               ),
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                 decoration: const BoxDecoration(
                   color: Colors.white,
                 ),
                 child: Column(
                   children: [
+                    Container(
+                      alignment: Alignment.centerRight,
+                      child: PopupMenuButton<int>(
+                        icon: const Icon(Icons.grid_view),
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 0,
+                            child: Text('Option 1'),
+                          ),
+                          PopupMenuItem(
+                            value: 1,
+                            child: Text('Option 2'),
+                          ),
+                          PopupMenuItem(
+                            value: 2,
+                            child: Text('Option 3'),
+                          ),
+                        ],
+                        onSelected: (value) {
+                          // Handle menu item selection
+                          setState(() {
+                            switch (value) {
+                              case 0:
+                                crossAxisCount = 1;
+                                crossAxisSpacing = 5;
+                                mainAxisSpacing = 10;
+                                break;
+                              case 1:
+                                crossAxisCount = 2;
+                                crossAxisSpacing = 2.5;
+                                mainAxisSpacing = 5;
+                                break;
+                              case 2:
+                                crossAxisCount = 3;
+                                crossAxisSpacing = .1;
+                                mainAxisSpacing = 1;
+                                break;
+                            }
+                          });
+                        },
+                      ),
+                    ),
                     // Other Portals
                     GridView.count(
                       physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 4.0,
-                      mainAxisSpacing: 8.0,
+                      crossAxisCount: crossAxisCount,
+                      crossAxisSpacing: crossAxisSpacing,
+                      mainAxisSpacing: mainAxisSpacing,
                       shrinkWrap: true,
                       children: [
                         ...otherPortals.map((portal) {
                           return buildPortalCard(portal);
                         }),
-                        if (otherPortals
-                            .isNotEmpty) // Only display if other portals exist
+                        if (otherPortals.isNotEmpty)
                           GestureDetector(
                             onTap: () {
                               openPaymentDialog(paymentPortals);
@@ -384,6 +430,7 @@ class HomeState extends State<Home> {
                           ),
                       ],
                     ),
+                    // Button after the GridView
                   ],
                 ),
               ),
@@ -396,8 +443,7 @@ class HomeState extends State<Home> {
           reauthenticateUserBeforeOpeningDialog(context);
         },
         child: Icon(Icons.vpn_key),
-        backgroundColor:
-            AppConfig.appLightRedTheme, // Change this to your desired color
+        backgroundColor: AppConfig.appLightRedTheme,
       ),
     );
   }
