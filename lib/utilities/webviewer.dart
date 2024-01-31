@@ -130,7 +130,7 @@ class _WebViewerState extends State<WebViewer> {
                 if (_isFullScreen) {
                   _hideAppBarAndBottomNavigationBar();
                 }
-
+                _showHiddenContainer();
                 _autofillFields();
               },
               onProgressChanged:
@@ -184,6 +184,12 @@ class _WebViewerState extends State<WebViewer> {
                     },
                   ),
                   IconButton(
+                    icon: Icon(Icons.auto_awesome), // Manual Autofill Icon
+                    onPressed: () {
+                      _manualAutofill(); // Call your manual autofill function
+                    },
+                  ),
+                  IconButton(
                     icon: Icon(Icons.content_copy),
                     onPressed: () async {
                       final currentUrl = await _webViewController!.getUrl();
@@ -219,6 +225,11 @@ class _WebViewerState extends State<WebViewer> {
     );
   }
 
+  void _manualAutofill() {
+    _autofillFields();
+    _autofillFields();
+  }
+
   bool _shouldShowExternalAppButton() {
     final type = widget.type;
     print('Current Type Color: $type');
@@ -230,9 +241,10 @@ class _WebViewerState extends State<WebViewer> {
     final currentUrl = widget.initialUrl;
     String appStoreUrl = '';
 
-    if (currentUrl == 'online.bpi.com.ph') {
+    if (currentUrl == 'https://online.bpi.com.ph' ||
+        currentUrl == 'https://www.bpi.com.ph') {
       appStoreUrl = 'com.bpi.ng.app';
-    } else if (currentUrl == 'online.bdo.com.ph') {
+    } else if (currentUrl == 'https://online.bdo.com.ph') {
       appStoreUrl = 'ph.com.bdo.retail';
     } else if (currentUrl == 'onlinebanking.metrobank.com.ph') {
       appStoreUrl = 'ph.com.metrobank.mcc.mbonline';
@@ -286,12 +298,12 @@ class _WebViewerState extends State<WebViewer> {
 
   Future<Map<String, dynamic>?> fetchPaymentMethodData() async {
     try {
-      QuerySnapshot<Map<String, dynamic>> querySnapshot = await FirebaseFirestore
-          .instance
-          .collection('payment_procedures')
-          .where('channels', isEqualTo: widget.pageTitle)
-          .limit(1) // Limit the result to 1 document
-          .get();
+      QuerySnapshot<Map<String, dynamic>> querySnapshot =
+          await FirebaseFirestore.instance
+              .collection('payment_procedures')
+              .where('channels', isEqualTo: widget.pageTitle)
+              .limit(1) // Limit the result to 1 document
+              .get();
 
       if (querySnapshot.docs.isNotEmpty) {
         return querySnapshot.docs.first.data();
@@ -308,40 +320,39 @@ class _WebViewerState extends State<WebViewer> {
   }
 
   void _openPaymentContent() async {
-  // Fetch payment method data based on the pageTitle
-  Map<String, dynamic>? paymentMethodData = await fetchPaymentMethodData();
+    // Fetch payment method data based on the pageTitle
+    Map<String, dynamic>? paymentMethodData = await fetchPaymentMethodData();
 
-  if (paymentMethodData != null) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          child: PaymentContent(paymentMethod: paymentMethodData),
-        );
-      },
-    );
-  } else {
-    // Handle the case where no data is found
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Error'),
-          content: Text('No data found for pageTitle: ${widget.pageTitle}'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
+    if (paymentMethodData != null) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return Dialog(
+            child: PaymentContent(paymentMethod: paymentMethodData),
+          );
+        },
+      );
+    } else {
+      // Handle the case where no data is found
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Error'),
+            content: Text('No data found for pageTitle: ${widget.pageTitle}'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
-}
-
 
   Future<bool> _onWillPop() async {
     return (await showDialog(
@@ -400,99 +411,203 @@ class _WebViewerState extends State<WebViewer> {
         false;
   }
 
+  void _showHiddenContainer() {
+  if (_webViewController != null) {
+    _webViewController!.evaluateJavascript(
+      source: """
+        var hiddenContainer = document.querySelector('.container.mg-150');
+        if (hiddenContainer) {
+          hiddenContainer.style.display = 'block';
+          
+          // Show child elements as well
+          var childElements = hiddenContainer.querySelectorAll('*');
+          for (var childElement in childElements) {
+            childElement.style.display = 'block';
+          }
+        }
+      """,
+    );
+  }
+}
+
+
+
   void _autofillFields() {
     if (_webViewController != null) {
       _webViewController!.evaluateJavascript(
         source: """
-          var usernameField = document.getElementsByName('username')[0];
-          if (usernameField) {
-            usernameField.value = '$userEmail';
+          //myLPU
+          var myLPUE = document.getElementById('username');
+          var myLPUP = document.getElementById('password');
+          if (myLPUE) {
+            myLPUE.value = '$userEmail';
+          }
+          if (myLPUP) {
+            myLPUP.value = '$password';
           }
 
-          var loginfmt = document.getElementsByName('loginfmt')[0];
-          if (loginfmt) {
-            loginfmt.value = '$userEmail'; 
+          //AIMS
+          var AIMSU = document.getElementsByName('txtUser')[0];
+          var AIMSP = document.getElementsByName('txtPwd')[0];
+          if (AIMSU) {
+            AIMSU.value = '$userEmail';
+          }
+          if (AIMSP) {
+            AIMSP.value = '$password';
           }
 
-          var usernameInput = document.querySelector('input[placeholder="Username"]');
-          if (usernameInput) {
-            usernameInput.value = '$userEmail';
+          //OPAC
+          var OPACU = document.getElementById('ID_loginName');
+          var OPACP = document.getElementById('ID_password');
+          if (OPACU) {
+            OPACU.value = '$userEmail';
+          }
+          if (OPACP) {
+            OPACP.value = '$password';
           }
 
-          var emailInput = document.querySelector('input[placeholder="Email"]');
-          if (emailInput) {
-            emailInput.value = '$userEmail';
+          //Book Borrowing Request
+          var BBRLast = document.getElementsByName('Lname')[0];
+          var BBRFirst = document.getElementsByName('Fname')[0];
+          var BBRNum = document.getElementsByName('studentNo')[0];
+          var BBREmail = document.getElementsByName('email')[0];
+          var BBRDept = document.getElementsByName('dept')[0];
+          if (BBRLast) {
+            BBRLast.value = '$userLname';
           }
-
-          var Lname = document.getElementsByName('Lname')[0];
-          if (Lname) {
-            Lname.value = '$userLname';
+          if (BBRFirst) {
+            BBRFirst.value = '$userFname';
           }
-
-          var Fname = document.getElementsByName('Fname')[0];
-          if (Fname) {
-            Fname.value = '$userFname';
+          if (BBRNum) {
+            BBRNum.value = '$userNo';
+            BBRNum.disabled = true;
           }
-
-          var emailInput = document.querySelector('input[type="email"]');
-          if (emailInput) {
-            emailInput.value = '$userEmail';
+          if (BBREmail) {
+            BBREmail.value = '$userEmail';
           }
-
-          var studentNo = document.getElementsByName('studentNo')[0];
-          if (studentNo) {
-            studentNo.value = '$userNo';
-          }
-
-          var email = document.getElementsByName('email')[0];
-          if (email) {
-            email.value = '$userEmail';
-          }
-
-          var loginName = document.getElementsByName('loginName')[0];
-          if (loginName) {
-            loginName.value = '$userEmail';
-          }
-
-          var dept = document.getElementsByName('dept')[0];
-        if (dept) {
-          // Check if userCollege is one of the specified values
+          if (BBRDept) {
           if ('$userCollege' == 'COECSA - DCS' || '$userCollege' == 'COECSA - DOA' || '$userCollege' == 'COECSA - DOE') {
-            dept.value = 'COECSA';
+            BBRDept.value = 'COECSA';
           } else {
-            // Keep the original value if not one of the specified values
-            dept.value = '$userCollege';
+            BBRDept.value = '$userCollege';
           }
-          
-          // Trigger the change event after setting the value
           var event = new Event('change', {'bubbles': true, 'cancelable': true});
           dept.dispatchEvent(event);
-        }
+          }
 
-          var passwordInput = document.querySelector('input[type="password"]');
+          //BBA
+          var BBAU = document.getElementById('loginID');
+          var BBAP = document.getElementById('loginPass');
+          if (BBAU) {
+            BBAU.value = '$userNo';
+          }
+          if (BBAP) {
+            BBAP.value = '$password';
+          }
+
+
+          //BDO
+          var BDOU = document.getElementsByName('channelUserID')[0];
+          var BDOP = document.getElementsByName('channelPswdPin')[0];
+          if (BDOU) {
+            BDOU.value = '$userEmail';
+          }
+          if (BDOP) {
+            BDOP.value = '$password';
+          }
+
+
+          //Metrobank
+          var usernameInput = document.querySelector('input[name="username"]');
+          var passwordInput = document.querySelector('input[name="password"]');
+          var loginButton = document.querySelector('#loginBtn1');
+
+          function tapAndFill(element, value) {
+          if (element) {
+                    // Trigger focus event
+                    element.focus();
+                    
+                    // Set field value
+                    element.value = value;
+
+                    // Trigger input and change events
+                    element.dispatchEvent(new InputEvent('input', { bubbles: true }));
+                    element.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+
+            tapAndFill(usernameInput, '$userEmail');
+            tapAndFill(passwordInput, '$password');
+
+            // Check if both fields have values and enable/disable the login button accordingly
+            if (usernameInput && passwordInput) {
+                if (usernameInput.value.trim() !== '' && passwordInput.value.trim() !== '') {
+                    loginButton.removeAttribute('disabled');
+                } else {
+                    loginButton.setAttribute('disabled', 'true');
+                }
+            }
+            
+
+          //CMS
+          var emailInput = document.querySelector('input[placeholder="Email"]');
+var passwordInput = document.querySelector('input[placeholder="Password"]');
+
+// Function to simulate tapping or selecting the field and filling the value
+function tapAndFill(element, value) {
+    if (element) {
+        // Add the 'Mui-focused' class to simulate field selection
+        element.classList.add('Mui-focused');
+
+        // Trigger focus event
+        element.focus();
+        
+        // Set field value
+        element.value = value;
+
+        // Trigger input and change events
+        element.dispatchEvent(new InputEvent('input', { bubbles: true }));
+        element.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+}
+
+// Fill the email and password fields
+tapAndFill(emailInput, '$userEmail');
+tapAndFill(passwordInput, '$password');
+
+
+          //BPI
+          var usernameInput = document.querySelector('input[placeholder="Username"]');
+          var passwordInput = document.querySelector('input[placeholder="Password"]');
+        
+          if (usernameInput) {
+          usernameInput.value = '$userEmail';
+          usernameInput.dispatchEvent(new InputEvent('input', { bubbles: true }));
+          usernameInput.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        
           if (passwordInput) {
-            passwordInput.value = '$password';
+          passwordInput.value = '$password';
+          passwordInput.dispatchEvent(new InputEvent('input', { bubbles: true }));
+          passwordInput.dispatchEvent(new Event('change', { bubbles: true }));
           }
 
-          var password = document.getElementsByName('password')[0];
-          if (password) {
-            password.value = '$password'; 
-          }
+          var injector = angular.element(document.querySelector('your-angular-root-element')).injector();
+          var rootScope = injector.get('\$rootScope');
+          rootScope.\$apply();
 
-          var password = document.getElementsById('password')[0];
-          if (password) {
-            password.value = '$password'; 
-          }
+          var loginButton = document.querySelector('ui-bpi-button[buttontype="submit"] button');
+          var form = document.querySelector('form');
+          if (form && form.checkValidity()) {
+            loginButton.removeAttribute('disabled');
+          } else {
+            loginButton.setAttribute('disabled', 'true');
+          }   
 
-          var passworedInput = document.querySelector('input[placeholder="Password"]');
-          if (passworedInput) {
-            passworedInput.value = '$password';
-          }
+          
 
-          var txtUser = document.getElementsByName('txtUser')[0];
-          if (txtUser) {
-            txtUser.value = '$userNo';
-          }
+
+
 
         """,
       );

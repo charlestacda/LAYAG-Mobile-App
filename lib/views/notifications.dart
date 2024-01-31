@@ -7,6 +7,7 @@ import 'package:lpu_app/config/app_config.dart';
 import 'package:lpu_app/views/components/app_drawer.dart';
 import 'package:lpu_app/views/help.dart';
 import 'package:lpu_app/models/notification_model.dart';
+import 'package:app_settings/app_settings.dart';
 
 List<NotificationModel> notifList = [];
 
@@ -234,6 +235,21 @@ class NotificationsState extends State<Notifications> {
           color: AppConfig.appSecondaryTheme,
           onPressed: () => Navigator.pop(context, false),
         ),
+        actions: [
+  Row(
+    children: [
+      IconButton(
+        icon: Icon(
+          Icons.settings,
+          color: AppConfig.appSecondaryTheme,
+        ),
+        onPressed: () => AppSettings.openAppSettings(type: AppSettingsType.notification),
+      ),
+    ],
+  ),
+],
+
+
       ),
         body: Column(
           children: [

@@ -41,6 +41,8 @@ class ToDo extends StatefulWidget {
 class ToDoState extends State<ToDo> {
   final CollectionReference _todoreference =
       FirebaseFirestore.instance.collection('todo_list');
+  final CollectionReference _completedReference =
+      FirebaseFirestore.instance.collection('completed_list');
   final CollectionReference _notifreference =
       FirebaseFirestore.instance.collection('users');
 
@@ -99,14 +101,22 @@ class ToDoState extends State<ToDo> {
   }
 
   Future<void> sendReminderNotification(String title, String message) async {
-    await AwesomeNotifications().createNotification(
-      content: NotificationContent(
-        id: 0, // Unique ID for the notification
-        channelKey: 'basic_channel', // Channel key defined in initialization
-        title: title,
-        body: message,
-      ),
-    );
+    PermissionStatus status = await Permission.notification.status;
+
+    if (status.isGranted) {
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: 0, // Unique ID for the notification
+          channelKey: 'basic_channel', // Channel key defined in initialization
+          title: title,
+          body: message,
+        ),
+      );
+    } else {
+      // Handle the case when notification permission is not granted
+      // You may choose to show a message or log a warning
+      print("Notification permission is not granted. Notification not sent.");
+    }
   }
 
   void checkAndSendReminders(List<TaskModel> tasks) {
@@ -399,53 +409,57 @@ class ToDoState extends State<ToDo> {
   Widget build(BuildContext context) => Scaffold(
         drawer: const AppDrawer(),
         appBar: AppBar(
-        automaticallyImplyLeading: false,
-        leading: Builder(
-          builder: (context) {
-            // Fetch the current user details
-            final user = FirebaseAuth.instance.currentUser;
-            return IconButton(
-              icon: ClipOval(
-                child: user != null && user.photoURL != null
-                    ? Image.network(
-                        user.photoURL!,
-                        width: 24,
-                        height: 24,
-                      )
-                    : Image.asset(
-                        'assets/images/user.png',
-                        width: 24,
-                        height: 24,
-                      ),
-              ),
-              onPressed: () => Scaffold.of(context).openDrawer(),
-            );
-          },
-        ),
-        title: Image.asset('assets/images/lpu_title.png'),
-        actions: [
-  IconButton(
-    icon: const Icon(Icons.notifications_none),
-    onPressed: () {
-      Navigator.push(
-        context,
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => const Notifications(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            const begin = Offset(1.0, 0.0);
-            const end = Offset.zero;
-            const curve = Curves.easeInOut;
-            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-            var offsetAnimation = animation.drive(tween);
+          automaticallyImplyLeading: false,
+          leading: Builder(
+            builder: (context) {
+              // Fetch the current user details
+              final user = FirebaseAuth.instance.currentUser;
+              return IconButton(
+                icon: ClipOval(
+                  child: user != null && user.photoURL != null
+                      ? Image.network(
+                          user.photoURL!,
+                          width: 24,
+                          height: 24,
+                        )
+                      : Image.asset(
+                          'assets/images/user.png',
+                          width: 24,
+                          height: 24,
+                        ),
+                ),
+                onPressed: () => Scaffold.of(context).openDrawer(),
+              );
+            },
+          ),
+          title: Image.asset('assets/images/lpu_title.png'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.notifications_none),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) =>
+                        const Notifications(),
+                    transitionsBuilder:
+                        (context, animation, secondaryAnimation, child) {
+                      const begin = Offset(1.0, 0.0);
+                      const end = Offset.zero;
+                      const curve = Curves.easeInOut;
+                      var tween = Tween(begin: begin, end: end)
+                          .chain(CurveTween(curve: curve));
+                      var offsetAnimation = animation.drive(tween);
 
-            return SlideTransition(position: offsetAnimation, child: child);
-          },
+                      return SlideTransition(
+                          position: offsetAnimation, child: child);
+                    },
+                  ),
+                );
+              },
+            ),
+          ],
         ),
-      );
-    },
-  ),
-],
-      ),
         floatingActionButton: FloatingActionButton(
           shape: const RoundedRectangleBorder(
               borderRadius: BorderRadius.all(Radius.circular(4.0))),
@@ -693,14 +707,23 @@ class ToDoState extends State<ToDo> {
               child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
                 Container(
                     child: Image.asset(
-                      'assets/images/todo_list_header.png',
+                      'assets/images/todo_list.png',
                       width: double.infinity,
                     ),
                     padding: const EdgeInsets.fromLTRB(0, 0, 0, 16)),
-                Align(
+                    Container(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppConfig.appSecondaryTheme,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+                child: Align(
                   alignment: Alignment.centerLeft,
                   child: Container(
-                    padding: const EdgeInsets.fromLTRB(0, 32, 0, 16),
+                    padding: const EdgeInsets.fromLTRB(0, 10, 0, 16),
                     child: Text(
                       todoList.length == 0
                           ? 'No Ongoing Task'
@@ -710,11 +733,21 @@ class ToDoState extends State<ToDo> {
                         fontFamily: 'Futura',
                         fontSize: 28,
                         fontWeight: FontWeight.w600,
+                        color: AppConfig.appWhiteAlphaTheme
                       ),
                     ),
                   ),
                 ),
-                ListView.builder(
+                    ),
+                Container(
+                  
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              color: Color.fromARGB(255, 235, 231, 231),
+            
+              ),
+            
+                child: ListView.builder(
                   scrollDirection: Axis.vertical,
                   physics: const NeverScrollableScrollPhysics(),
                   shrinkWrap: true,
@@ -784,62 +817,62 @@ class ToDoState extends State<ToDo> {
                             if (value == 'edit') {
                               // Show dialog for editing task
                               _showEditDialog(context, todoList[index]);
-                            } else if (value == 'delete'){
+                            } else if (value == 'delete') {
                               showDialog(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    return AlertDialog(
-                                      title: const Text('Confirm Deletion',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          )),
-                                      content: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Text(
-                                              'Are you sure you want to delete the following task?'),
-                                          const SizedBox(height: 10),
-                                          Text(todoTask.text,
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.bold)),
-                                          Text(
-                                            todoList[index].todoTask,
-                                            style: const TextStyle(
-                                                color: AppConfig
-                                                    .appSecondaryTheme),
-                                          ),
-                                        ],
-                                      ),
-                                      actions: <Widget>[
-                                        TextButton(
-                                          onPressed: () {
-                                            Navigator.of(context).pop();
-                                          },
-                                          child: const Text(
-                                            'Cancel',
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AlertDialog(
+                                    title: const Text('Confirm Deletion',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        )),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                            'Are you sure you want to delete the following task?'),
+                                        const SizedBox(height: 10),
+                                        Text(todoTask.text,
                                             style: TextStyle(
-                                              color: Colors
-                                                  .grey, // Set the color to grey
-                                            ),
-                                          ),
-                                        ),
-                                        TextButton(
-                                          onPressed: () {
-                                            Navigator.of(context).pop();
-                                            cancelScheduledNotifications(
-                                                todoList[index].todoTask);
-                                            removeTodoTask(index);
-                                            sortTodoListByDeadline();
-                                            sortCompletedListByDeadline();
-                                          },
-                                          child: const Text('Delete'),
+                                                fontWeight: FontWeight.bold)),
+                                        Text(
+                                          todoList[index].todoTask,
+                                          style: const TextStyle(
+                                              color:
+                                                  AppConfig.appSecondaryTheme),
                                         ),
                                       ],
-                                    );
-                                  },
-                                );
+                                    ),
+                                    actions: <Widget>[
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.of(context).pop();
+                                        },
+                                        child: const Text(
+                                          'Cancel',
+                                          style: TextStyle(
+                                            color: Colors
+                                                .grey, // Set the color to grey
+                                          ),
+                                        ),
+                                      ),
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.of(context).pop();
+                                          cancelScheduledNotifications(
+                                              todoList[index].todoTask);
+                                          removeTodoTask(index);
+                                          sortTodoListByDeadline();
+                                          sortCompletedListByDeadline();
+                                        },
+                                        child: const Text('Delete'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
                             }
                           },
                           itemBuilder: (BuildContext context) =>
@@ -859,24 +892,63 @@ class ToDoState extends State<ToDo> {
                     );
                   },
                 ),
-                Align(
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppConfig.appSecondaryTheme,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+                  child: Align(
                   alignment: Alignment.centerLeft,
                   child: Container(
                     padding: const EdgeInsets.fromLTRB(0, 32, 0, 16),
-                    child: Text(
-                      completedList.length == 0
-                          ? 'No Completed Task'
-                          : 'Completed (${completedList.length})',
-                      textAlign: TextAlign.left,
-                      style: const TextStyle(
-                        fontFamily: 'Futura',
-                        fontSize: 28,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: Row(
+                      children: [
+                        Text(
+                          completedList.length == 0
+                              ? 'No Completed Task'
+                              : 'Completed (${completedList.length})',
+                          textAlign: TextAlign.left,
+                          style: const TextStyle(
+                            fontFamily: 'Futura',
+                            fontSize: 28,
+                            fontWeight: FontWeight.w600,
+                            color: AppConfig.appWhiteAlphaTheme,
+                          ),
+                        ),
+                        Spacer(), // Spacer takes up any available space
+                        if (completedList.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8.0),
+                                color: Color(0xFFD94141),
+                              ),
+                              child: IconButton(
+                                onPressed: deleteAllCompleted,
+                                icon: const Icon(Icons.delete),
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),
-                ListView.builder(
+                ),
+                Container(
+                  
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              color: Color.fromARGB(255, 235, 231, 231),
+              ),
+                child: ListView.builder(
                     scrollDirection: Axis.vertical,
                     physics: const NeverScrollableScrollPhysics(),
                     shrinkWrap: true,
@@ -995,11 +1067,70 @@ class ToDoState extends State<ToDo> {
                             ),
                           ));
                     }),
-              ]),
+            ),]),
             ),
           ),
         ),
       );
+
+  void deleteAllCompleted() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Deletion',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              )),
+          content: const Text(
+              'Are you sure you want to delete all completed tasks?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                deleteAllCompletedTasks();
+              },
+              child: const Text('Yes'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void deleteAllCompletedTasks() {
+    for (CompleteTaskModel completedTask in completedList) {
+      cancelScheduledNotifications(completedTask.TodoTask);
+      removeAllCompletedTask(completedTask);
+    }
+    completedList.clear(); // Remove all completed tasks
+    sortCompletedListByDeadline();
+  }
+
+  Future<void> removeAllCompletedTask(CompleteTaskModel completedTask) async {
+    final user = FirebaseAuth.instance.currentUser;
+    try {
+      if (user != null) {
+        await _completedReference
+            .doc(user.uid)
+            .update({completedTask.TodoTask: FieldValue.delete()});
+      }
+    } catch (e) {
+      print('Error removing completed task: $e');
+      // Handle error as needed
+    }
+  }
 
   Future<void> cancelAllScheduledNotifications() async {
     await AwesomeNotifications().cancelAll();
@@ -1363,17 +1494,26 @@ class ToDoState extends State<ToDo> {
 
   Future<void> scheduleNotification(String title, String id,
       DateTime scheduledTime, String body, String group) async {
-    await AwesomeNotifications().createNotification(
-      content: NotificationContent(
-        id: id.hashCode,
-        channelKey: 'basic_channel', // Replace with your channel key
-        groupKey: group,
-        title: title,
-        body: body,
-      ),
-      schedule: NotificationCalendar.fromDate(date: scheduledTime),
-    );
-    print("Schedule group: $id");
+    PermissionStatus status = await Permission.notification.status;
+
+    if (status.isGranted) {
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: id.hashCode,
+          channelKey: 'basic_channel', // Replace with your channel key
+          groupKey: group,
+          title: title,
+          body: body,
+        ),
+        schedule: NotificationCalendar.fromDate(date: scheduledTime),
+      );
+      print("Schedule group: $id");
+    } else {
+      // Handle the case when notification permission is not granted
+      // You may choose to show a message or log a warning
+      print(
+          "Notification permission is not granted. Notification not scheduled.");
+    }
   }
 
   Future<void> cancelScheduledNotifications(String groupKey) async {

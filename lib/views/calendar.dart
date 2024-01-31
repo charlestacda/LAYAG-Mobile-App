@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:lpu_app/views/notifications.dart';
@@ -18,14 +19,17 @@ class Calendar extends StatefulWidget {
 }
 
 class _CalendarState extends State<Calendar> {
-  late final ValueNotifier<List<Event>> _selectedEvents = ValueNotifier([]);
+  late final ValueNotifier<List<dynamic>> _selectedEvents = ValueNotifier([]);
   CalendarFormat _calendarFormat = CalendarFormat.month;
   RangeSelectionMode _rangeSelectionMode = RangeSelectionMode.toggledOff;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   DateTime? _rangeStart;
   DateTime? _rangeEnd;
-  StreamSubscription<Map<DateTime, List<Event>>>? _eventsSubscription;
+  StreamSubscription<Map<DateTime, List<dynamic>>>? _eventsSubscription;
+
+
+  
 
   @override
   void initState() {
@@ -46,15 +50,57 @@ class _CalendarState extends State<Calendar> {
   }
 
   void loadEventsRealtime() {
-    _eventsSubscription = fetchEventsRealtime(context).listen((eventsMap) {
-      setState(() {
-        kEvents.clear();
-        kEvents.addAll(eventsMap);
-        _selectedEvents.value =
-            _getEventsForDay(_selectedDay!); // Update selected events
-      });
+  _eventsSubscription = fetchEventsRealtime(context).listen((eventsMap) {
+    setState(() {
+      kEvents.clear();
+      kEvents.addAll(eventsMap.map((key, value) =>
+          MapEntry(key, value.cast<Event>())
+      ));
+
+      // Cast the items to Event type
+      _selectedEvents.value = _getItemsForDay(_selectedDay!).cast<Event>();
+    });
+  });
+}
+
+
+List<dynamic> _getItemsForDay(DateTime day) {
+  final List<Event> events = kEvents[day] ?? [];
+  final List<Event> todoTasks = _getTodoTasksForDay(day);
+
+  return [...events, ...todoTasks];
+}
+
+List<Event> _getTodoTasksForDay(DateTime day) {
+  final List<Event> todoTasks = [];
+
+  // Iterate over the todo_list collection for the current user
+  final currentUser = FirebaseAuth.instance.currentUser;
+  if (currentUser != null) {
+    final userId = currentUser.uid;
+    final todoListCollection = FirebaseFirestore.instance.collection('todo_list').doc(userId);
+
+    todoListCollection.get().then((snapshot) {
+      if (snapshot.exists) {
+        final todoListData = snapshot.data();
+        if (todoListData != null) {
+          todoListData.forEach((taskId, todoTask) {
+            final deadlineDateString = todoTask['deadlineDate'] as String;
+            final event = Event.fromTodoTask(taskId, {
+              ...todoTask,
+              'deadlineDate': deadlineDateString,
+            });
+            todoTasks.add(event);
+          });
+        }
+      }
     });
   }
+
+  return todoTasks;
+}
+
+
 
   String _formatTime(String dateTimeString) {
     final dateTime = DateTime.parse(dateTimeString);
@@ -63,42 +109,43 @@ class _CalendarState extends State<Calendar> {
   }
 
   void _showEventDetails(Event event) {
-    final startTimeLocal =
-        event.startDateTime.toLocal(); // Convert UTC to local time
-    final endTimeLocal =
-        event.endDateTime.toLocal(); // Convert UTC to local time
+  final startTimeLocal = event.startDateTime.toLocal();
+  final endTimeLocal = event.endDateTime.toLocal();
+  final formattedStartTime = DateFormat('h:mm a').format(startTimeLocal);
+  final formattedEndTime = DateFormat('h:mm a').format(endTimeLocal);
 
-    final formattedStartTime = DateFormat('h:mm a').format(startTimeLocal);
-    final formattedEndTime = DateFormat('h:mm a').format(endTimeLocal);
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Event Details'),
-          content: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Title: ${event.title}'),
-              Text('Description: ${event.description}'),
-              Text('Start Time: $formattedStartTime'),
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text(event.isTodoEvent ? 'Todo Details' : 'Event Details'),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Title: ${event.title}'),
+            Text('Description: ${event.description}'),
+            Text(event.isTodoEvent ? 'Deadline Date $formattedStartTime' : 'Start Time: $formattedStartTime'),
+            if (!event.isTodoEvent) // Show "Location" only for regular events
               Text('End Time: $formattedEndTime'),
+            if (!event.isTodoEvent)
               Text('Location: ${event.location}'),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Close'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
           ],
-        );
-      },
-    );
-  }
+        ),
+        actions: <Widget>[
+          TextButton(
+            child: Text('Close'),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
 
   List<Event> _getEventsForDay(DateTime day) {
     return kEvents[day] ?? [];
@@ -113,18 +160,18 @@ class _CalendarState extends State<Calendar> {
   }
 
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
-    if (!isSameDay(_selectedDay, selectedDay)) {
-      setState(() {
-        _selectedDay = selectedDay;
-        _focusedDay = focusedDay;
-        _rangeStart = null;
-        _rangeEnd = null;
-        _rangeSelectionMode = RangeSelectionMode.toggledOff;
-      });
+  if (!isSameDay(_selectedDay, selectedDay)) {
+    setState(() {
+      _selectedDay = selectedDay;
+      _focusedDay = focusedDay;
+      _rangeStart = null;
+      _rangeEnd = null;
+      _rangeSelectionMode = RangeSelectionMode.toggledOff;
+    });
 
-      _selectedEvents.value = _getEventsForDay(selectedDay);
-    }
+    _selectedEvents.value = _getItemsForDay(selectedDay);
   }
+}
 
   void _onRangeSelected(DateTime? start, DateTime? end, DateTime focusedDay) {
     setState(() {
@@ -210,7 +257,7 @@ class _CalendarState extends State<Calendar> {
               child: Container(
                 alignment: Alignment.center,
                 child: Image.asset(
-                  'assets/images/school_calendar_header.png',
+                  'assets/images/calendar_activities.png',
                   width: double.infinity,
                 ),
               ),
@@ -251,10 +298,10 @@ class _CalendarState extends State<Calendar> {
               },
             ),
             const SizedBox(height: 8.0),
-            ValueListenableBuilder<List<Event>>(
-              valueListenable: _selectedEvents,
-              builder: (context, value, _) {
-                return ListView.builder(
+            ValueListenableBuilder<List<dynamic>>(
+  valueListenable: _selectedEvents,
+  builder: (context, value, _) {
+    return ListView.builder(
                   shrinkWrap: true,
                   physics: NeverScrollableScrollPhysics(),
                   itemCount: value.length,

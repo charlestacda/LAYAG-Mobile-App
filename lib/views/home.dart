@@ -35,9 +35,11 @@ class Home extends StatefulWidget {
 }
 
 class HomeState extends State<Home> {
-  int crossAxisCount = 3;
-  double crossAxisSpacing = 0.1;
-  double mainAxisSpacing = 1.0;
+  int selected = 4;
+  int crossAxisCount = 2;
+  double crossAxisSpacing = 2.5;
+  double mainAxisSpacing = 5;
+  double textSize = 14;
   bool isPopedUp = false;
   Random random = Random();
   int randomNumber = 0;
@@ -61,16 +63,62 @@ class HomeState extends State<Home> {
     });
 
     fetchUserType();
+
+    loadSelectedOption().then((value) {
+      setState(() {
+        switch (value) {
+          case 0:
+            crossAxisCount = 1;
+            crossAxisSpacing = 5;
+            mainAxisSpacing = 10;
+            textSize = 28;
+            selected = 0;
+            break;
+          case 1:
+            crossAxisCount = 2;
+            crossAxisSpacing = 2.5;
+            mainAxisSpacing = 5;
+            textSize = 14;
+            selected = 1;
+            break;
+          case 2:
+            crossAxisCount = 3;
+            crossAxisSpacing = .1;
+            mainAxisSpacing = 1;
+            textSize = 10;
+            selected = 2;
+            break;
+        }
+      });
+    });
   }
 
   Future<void> _promptNotificationPermissions() async {
-    PermissionStatus status = await Permission.notification.status;
-    if (!status.isGranted) {
-      PermissionStatus permissionStatus =
-          await Permission.notification.request();
-      if (!permissionStatus.isGranted) {
-        // Handle if permission is still not granted
-        // For example, show an error message or handle it as required in your app
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool askedForPermission = prefs.getBool('askedForPermission') ?? false;
+
+    if (!askedForPermission) {
+      PermissionStatus status = await Permission.notification.status;
+
+      if (status.isGranted) {
+        // Permission is already granted, save the flag
+        prefs.setBool('askedForPermission', true);
+      } else if (status.isPermanentlyDenied) {
+        // Permission is permanently denied, save the flag and handle accordingly
+        prefs.setBool('askedForPermission', true);
+
+        // Optionally: Show a message to the user that they need to enable the permission in settings
+        // You might want to navigate the user to the app settings using AppSettings.openAppSettings()
+      } else {
+        PermissionStatus permissionStatus =
+            await Permission.notification.request();
+        if (permissionStatus.isGranted) {
+          // Permission granted, save the flag
+          prefs.setBool('askedForPermission', true);
+        } else {
+          // Handle if permission is not granted
+          // For example, show an error message or handle it as required in your app
+        }
       }
     }
   }
@@ -256,12 +304,29 @@ class HomeState extends State<Home> {
     }
   }
 
+  Future<void> saveSelectedOption(int value) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('selectedOption', value);
+  }
+
+  // Method to load the selected option
+  Future<int> loadSelectedOption() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('selectedOption') ??
+        1; // Default value is 1 for Option 2
+  }
+
   @override
   Widget build(BuildContext context) {
-    List<Portal> paymentPortals =
-    portals.where((portal) => portal.color == "#00a62d").toList();
     List<Portal> otherPortals =
-    portals.where((portal) => portal.color != "#00a62d").toList();
+        portals.where((portal) => portal.color == "#a62d38").toList();
+    List<Portal> libraryPortals =
+        portals.where((portal) => portal.color == "#a42d6d").toList();
+    List<Portal> paymentPortals =
+        portals.where((portal) => portal.color == "#00a62d").toList();
+    List<Portal> adminPortals =
+        portals.where((portal) => portal.color == "#2da6a6").toList();
+    
     return Scaffold(
       drawer: const AppDrawer(),
       appBar: AppBar(
@@ -274,15 +339,15 @@ class HomeState extends State<Home> {
               icon: ClipOval(
                 child: user != null && user.photoURL != null
                     ? Image.network(
-                  user.photoURL!,
-                  width: 24,
-                  height: 24,
-                )
+                        user.photoURL!,
+                        width: 24,
+                        height: 24,
+                      )
                     : Image.asset(
-                  'assets/images/user.png',
-                  width: 24,
-                  height: 24,
-                ),
+                        'assets/images/user.png',
+                        width: 24,
+                        height: 24,
+                      ),
               ),
               onPressed: () => Scaffold.of(context).openDrawer(),
             );
@@ -297,7 +362,7 @@ class HomeState extends State<Home> {
                 context,
                 PageRouteBuilder(
                   pageBuilder: (context, animation, secondaryAnimation) =>
-                  const Notifications(),
+                      const Notifications(),
                   transitionsBuilder:
                       (context, animation, secondaryAnimation, child) {
                     const begin = Offset(1.0, 0.0);
@@ -330,7 +395,7 @@ class HomeState extends State<Home> {
               ),
               Container(
                 padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                 decoration: const BoxDecoration(
                   color: Colors.white,
                 ),
@@ -343,18 +408,18 @@ class HomeState extends State<Home> {
                         itemBuilder: (context) => [
                           PopupMenuItem(
                             value: 0,
-                            child: Text('Option 1'),
+                            child: Text('Large Cards'),
                           ),
                           PopupMenuItem(
                             value: 1,
-                            child: Text('Option 2'),
+                            child: Text('Medium Cards'),
                           ),
                           PopupMenuItem(
                             value: 2,
-                            child: Text('Option 3'),
+                            child: Text('Small Cards'),
                           ),
                         ],
-                        onSelected: (value) {
+                        onSelected: (value) async {
                           // Handle menu item selection
                           setState(() {
                             switch (value) {
@@ -362,20 +427,29 @@ class HomeState extends State<Home> {
                                 crossAxisCount = 1;
                                 crossAxisSpacing = 5;
                                 mainAxisSpacing = 10;
+                                textSize = 28;
+                                selected = 0;
                                 break;
                               case 1:
                                 crossAxisCount = 2;
                                 crossAxisSpacing = 2.5;
                                 mainAxisSpacing = 5;
+                                textSize = 14;
+                                selected = 1;
                                 break;
                               case 2:
                                 crossAxisCount = 3;
                                 crossAxisSpacing = .1;
                                 mainAxisSpacing = 1;
+                                textSize = 10;
+                                selected = 2;
                                 break;
                             }
                           });
+
+                          await saveSelectedOption(value);
                         },
+                        initialValue: selected,
                       ),
                     ),
                     // Other Portals
@@ -387,9 +461,48 @@ class HomeState extends State<Home> {
                       shrinkWrap: true,
                       children: [
                         ...otherPortals.map((portal) {
-                          return buildPortalCard(portal);
+                          return buildPortalCard(portal, textSize);
                         }),
-                        if (otherPortals.isNotEmpty)
+                        if (libraryPortals.isNotEmpty)
+                        GestureDetector(
+                            onTap: () {
+                              openLibraryDialog(libraryPortals);
+                            },
+                            child: Card(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Color(int.parse(
+                                      "#a42d6d".replaceAll("#", "0xFF"))),
+                                  borderRadius: BorderRadius.circular(8.0),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      child: Image.asset(
+                                        'assets/images/library.png',
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'ARC Online Resources',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Color(0xFFFFFFFF),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: textSize,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (paymentPortals.isNotEmpty)
                           GestureDetector(
                             onTap: () {
                               openPaymentDialog(paymentPortals);
@@ -415,12 +528,51 @@ class HomeState extends State<Home> {
                                     ),
                                     const SizedBox(height: 16),
                                     Text(
-                                      'Payment Channels',
+                                      'Offsite Payment Channels',
                                       textAlign: TextAlign.center,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: Color(0xFFFFFFFF),
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 14,
+                                        fontSize: textSize,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (adminPortals.isNotEmpty)
+                          GestureDetector(
+                            onTap: () {
+                              openAdminDialog(adminPortals);
+                            },
+                            child: Card(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Color(int.parse(
+                                      "#2da6a6".replaceAll("#", "0xFF"))),
+                                  borderRadius: BorderRadius.circular(8.0),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      child: Image.asset(
+                                        'assets/images/admin.png',
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Administrator Links',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Color(0xFFFFFFFF),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: textSize,
                                       ),
                                     ),
                                   ],
@@ -645,88 +797,89 @@ class HomeState extends State<Home> {
             .set({'passwordManager': passwordManager}, SetOptions(merge: true));
 
         showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text(
-          'PASSWORD MANAGER',
-          style: TextStyle(
-            fontFamily: 'Futura',
-            color: AppConfig.appSecondaryTheme,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(height: 8),
-            if (portalTitles.isNotEmpty)
-              SizedBox(
-                width: double.maxFinite, // Make the SizedBox take up maximum width
-                height: 285, // Set a specific height for the ListView
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: portalTitles.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    return InkWell(
-                      onTap: () {
-                        Navigator.pop(context);
-                        String selectedPortalTitle = portalTitles[index];
-                        showPortalDetailsDialog(
-                          selectedPortalTitle,
-                          passwordManager[selectedPortalTitle],
-                          passwordManager,
-                        );
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 4.0),
-                        padding: const EdgeInsets.all(8.0),
-                        decoration: BoxDecoration(
-                          color: AppConfig.appSecondaryTheme,
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text(
+                'PASSWORD MANAGER',
+                style: TextStyle(
+                  fontFamily: 'Futura',
+                  color: AppConfig.appSecondaryTheme,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(height: 8),
+                  if (portalTitles.isNotEmpty)
+                    SizedBox(
+                      width: double
+                          .maxFinite, // Make the SizedBox take up maximum width
+                      height: 285, // Set a specific height for the ListView
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: portalTitles.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          return InkWell(
+                            onTap: () {
+                              Navigator.pop(context);
+                              String selectedPortalTitle = portalTitles[index];
+                              showPortalDetailsDialog(
+                                selectedPortalTitle,
+                                passwordManager[selectedPortalTitle],
+                                passwordManager,
+                              );
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(vertical: 4.0),
+                              padding: const EdgeInsets.all(8.0),
+                              decoration: BoxDecoration(
+                                color: AppConfig.appSecondaryTheme,
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                              child: Text(
+                                portalTitles[index],
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  else
+                    Text('No portal titles available.'),
+                  SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
                         child: Text(
-                          portalTitles[index],
+                          'Exit',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Futura',
+                            color: Colors.grey[700],
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
                       ),
-                    );
-                  },
-                ),
-              )
-            else
-              Text('No portal titles available.'),
-            SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: Text(
-                    'Exit',
-                    style: TextStyle(
-                      fontFamily: 'Futura',
-                      color: Colors.grey[700],
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                    ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    },
-  );
+                ],
+              ),
+            );
+          },
+        );
       } else {
         // If 'passwordManager' field doesn't exist, create a new one
         Map<String, dynamic> passwordManager = {'portals': []};
@@ -763,88 +916,89 @@ class HomeState extends State<Home> {
             .set({'passwordManager': passwordManager}, SetOptions(merge: true));
 
         showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text(
-          'PASSWORD MANAGER',
-          style: TextStyle(
-            fontFamily: 'Futura',
-            color: AppConfig.appSecondaryTheme,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(height: 8),
-            if (portalTitles.isNotEmpty)
-              SizedBox(
-                width: double.maxFinite, // Make the SizedBox take up maximum width
-                height: 285, // Set a specific height for the ListView
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: portalTitles.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    return InkWell(
-                      onTap: () {
-                        Navigator.pop(context);
-                        String selectedPortalTitle = portalTitles[index];
-                        showPortalDetailsDialog(
-                          selectedPortalTitle,
-                          passwordManager[selectedPortalTitle],
-                          passwordManager,
-                        );
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 4.0),
-                        padding: const EdgeInsets.all(8.0),
-                        decoration: BoxDecoration(
-                          color: AppConfig.appSecondaryTheme,
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text(
+                'PASSWORD MANAGER',
+                style: TextStyle(
+                  fontFamily: 'Futura',
+                  color: AppConfig.appSecondaryTheme,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(height: 8),
+                  if (portalTitles.isNotEmpty)
+                    SizedBox(
+                      width: double
+                          .maxFinite, // Make the SizedBox take up maximum width
+                      height: 285, // Set a specific height for the ListView
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: portalTitles.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          return InkWell(
+                            onTap: () {
+                              Navigator.pop(context);
+                              String selectedPortalTitle = portalTitles[index];
+                              showPortalDetailsDialog(
+                                selectedPortalTitle,
+                                passwordManager[selectedPortalTitle],
+                                passwordManager,
+                              );
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(vertical: 4.0),
+                              padding: const EdgeInsets.all(8.0),
+                              decoration: BoxDecoration(
+                                color: AppConfig.appSecondaryTheme,
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                              child: Text(
+                                portalTitles[index],
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  else
+                    Text('No portal titles available.'),
+                  SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
                         child: Text(
-                          portalTitles[index],
+                          'Exit',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Futura',
+                            color: Colors.grey[700],
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
                       ),
-                    );
-                  },
-                ),
-              )
-            else
-              Text('No portal titles available.'),
-            SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: Text(
-                    'Exit',
-                    style: TextStyle(
-                      fontFamily: 'Futura',
-                      color: Colors.grey[700],
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                    ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    },
-  );
+                ],
+              ),
+            );
+          },
+        );
       }
     }
   }
@@ -1013,76 +1167,177 @@ class HomeState extends State<Home> {
     }
   }
 
-  void openPaymentDialog(List<Portal> paymentPortals) {
-  int crossAxisCount = 2;
-  double rowHeight = 145.0; // Adjust as needed based on your card content
+  void openLibraryDialog(List<Portal> libraryPortals){
+    int crossAxisCount = 2;
+    double rowHeight = 145.0; // Adjust as needed based on your card content
 
-  int rowCount = (paymentPortals.length / crossAxisCount).ceil();
-  double gridViewHeight = rowCount * rowHeight;
+    int rowCount = (libraryPortals.length / crossAxisCount).ceil();
+    double gridViewHeight = rowCount * rowHeight;
 
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Payment Channels', style: TextStyle(fontSize: 16)),
-            Row(
-              children: [
-                SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: IconButton(
-                    iconSize: 20,
-                    icon: Icon(Icons.help_center),
-                    onPressed: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const PaymentProcedures()));
-                    },
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('ARC Online Resources', style: TextStyle(fontSize: 16)),
+              Row(
+                children: [
+                  SizedBox(width: 15),
+                  SizedBox(
+                    width: 30,
+                    height: 30,
+                    child: IconButton(
+                      iconSize: 20,
+                      icon: Icon(Icons.close),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                    ),
                   ),
-                ),
-                SizedBox(width: 8),
-                SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: IconButton(
-                    iconSize: 20,
-                    icon: Icon(Icons.close),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          height: gridViewHeight,
-          child: GridView.count(
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 4.0,
-            mainAxisSpacing: 8.0,
-            children: paymentPortals.map((portal) {
-              return buildPortalCard(portal);
-            }).toList(),
+                ],
+              ),
+            ],
           ),
-        ),
-      );
-    },
-  );
-}
+          content: SizedBox(
+            width: double.maxFinite,
+            height: gridViewHeight,
+            child: GridView.count(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 4.0,
+              mainAxisSpacing: 8.0,
+              children: libraryPortals.map((portal) {
+                return buildPortalCard(portal, 10);
+              }).toList(),
+            ),
+          ),
+        );
+      },
+    );
+  }
 
+  void openPaymentDialog(List<Portal> paymentPortals) {
+    int crossAxisCount = 2;
+    double rowHeight = 145.0; // Adjust as needed based on your card content
 
+    int rowCount = (paymentPortals.length / crossAxisCount).ceil();
+    double gridViewHeight = rowCount * rowHeight;
 
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Offsite Payment\nChannels', style: TextStyle(fontSize: 16)),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 30,
+                    height: 30,
+                    child: IconButton(
+                      iconSize: 20,
+                      icon: Icon(Icons.help_center),
+                      onPressed: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    const PaymentProcedures()));
+                      },
+                    ),
+                  ),
+                  SizedBox(width: 15),
+                  SizedBox(
+                    width: 30,
+                    height: 30,
+                    child: IconButton(
+                      iconSize: 20,
+                      icon: Icon(Icons.close),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: gridViewHeight,
+            child: GridView.count(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 4.0,
+              mainAxisSpacing: 8.0,
+              children: paymentPortals.map((portal) {
+                return buildPortalCard(portal, 10);
+              }).toList(),
+            ),
+          ),
+        );
+      },
+    );
+  }
 
-  Widget buildPortalCard(Portal portal) {
+  void openAdminDialog(List<Portal> adminPortals) {
+    int crossAxisCount = 2;
+    double rowHeight = 145.0; // Adjust as needed based on your card content
+
+    int rowCount = (adminPortals.length / crossAxisCount).ceil();
+    double gridViewHeight = rowCount * rowHeight;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Administrator Links', style: TextStyle(fontSize: 16)),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 30,
+                    height: 30,
+                  ),
+                  SizedBox(width: 15),
+                  SizedBox(
+                    width: 30,
+                    height: 30,
+                    child: IconButton(
+                      iconSize: 20,
+                      icon: Icon(Icons.close),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: gridViewHeight,
+            child: GridView.count(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 4.0,
+              mainAxisSpacing: 8.0,
+              children: adminPortals.map((portal) {
+                return buildPortalCard(portal, 10);
+              }).toList(),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget buildPortalCard(Portal portal, double size) {
     Color cardColor = Color(int.parse(portal.color.replaceAll("#", "0xFF")));
-
     return GestureDetector(
       onTap: () async {
         if (portal.title == 'GCash') {
@@ -1131,10 +1386,10 @@ class HomeState extends State<Home> {
                 Text(
                   portal.title,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Color(0xFFFFFFFF),
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: size,
                   ),
                 ),
               ],

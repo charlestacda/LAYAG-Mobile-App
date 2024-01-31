@@ -8,6 +8,7 @@ import 'package:lpu_app/config/app_config.dart';
 import 'package:lpu_app/views/landing.dart';
 import 'package:lpu_app/views/login.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:provider/provider.dart';
@@ -70,6 +71,19 @@ try {
     ],
   );
 
+// Check if the app was terminated for more than 3 hours
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  int? lastTerminationTimestamp = prefs.getInt('last_termination_timestamp');
+  int currentTimestamp = DateTime.now().millisecondsSinceEpoch;
+  int threeHoursInMillis = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
+
+  if (lastTerminationTimestamp != null &&
+      currentTimestamp - lastTerminationTimestamp > threeHoursInMillis) {
+    // If more than 3 hours, log out the user
+    await FirebaseAuth.instance.signOut();
+  }
+
+
 
   runApp(
     ChangeNotifierProvider<UserTypeProvider>(
@@ -104,11 +118,30 @@ try {
     ),
   );
   
-
-
-
-  
+// Save the current timestamp when the app is terminated
+  runAppObserver((AppLifecycleState state) async {
+    if (state == AppLifecycleState.paused) {
+      prefs.setInt('last_termination_timestamp', DateTime.now().millisecondsSinceEpoch);
+    }
+  });
 }
+
+void runAppObserver(Function(AppLifecycleState) callback) {
+  WidgetsBinding.instance?.addObserver(AppLifecycleObserver(callback));
+}
+
+class AppLifecycleObserver extends WidgetsBindingObserver {
+  final Function(AppLifecycleState) callback;
+
+  AppLifecycleObserver(this.callback);
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    callback(state);
+  }
+}
+
+
 
   
   

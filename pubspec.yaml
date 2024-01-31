@@ -76,6 +76,8 @@ dependencies:
   pdftron_flutter: ^1.0.1-24
   path_provider: ^2.1.1
   flutter_inappwebview: ^6.0.0
+  app_settings: ^5.1.1
+  open_mail_app: ^0.4.5
 
 
 dev_dependencies:

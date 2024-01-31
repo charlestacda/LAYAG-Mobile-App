@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lpu_app/config/app_config.dart';
 import 'package:lpu_app/views/account_settings.dart';
+import 'package:lpu_app/views/contact_info.dart';
 import 'package:lpu_app/views/home.dart';
 import 'package:lpu_app/views/calendar.dart';
 import 'package:lpu_app/views/todo.dart';
@@ -21,7 +22,7 @@ class BottomNavState extends State<NewNavigation> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: const [Calendar(), ToDo(), Home(), HandbookMenu()][currentIndex],
+      body: const [Calendar(), ToDo(), Home(), HandbookMenu(), ContactInfo()][currentIndex],
       backgroundColor: Colors.white,
       bottomNavigationBar: CurvedNavigationBar(
         index: currentIndex,
@@ -45,6 +46,10 @@ class BottomNavState extends State<NewNavigation> {
           ),
           Icon(
             Icons.book_outlined,
+            color: Colors.white,
+          ),
+          Icon(
+            Icons.contact_mail_outlined,
             color: Colors.white,
           ),
         ],

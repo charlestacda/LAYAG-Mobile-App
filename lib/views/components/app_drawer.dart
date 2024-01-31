@@ -20,9 +20,6 @@ import 'package:flutter/material.dart';
 import 'package:lpu_app/views/payment_procedures.dart';
 import 'package:lpu_app/utilities/webviewer.dart';
 
-
-
-
 class AppDrawer extends StatefulWidget {
   const AppDrawer({Key? key}) : super(key: key);
 
@@ -59,19 +56,19 @@ class AppDrawerState extends State<AppDrawer> {
   }
 
   Stream<UserModel?> getUserDetails(String userId) {
-  FirebaseFirestore firestore = FirebaseFirestore.instance;
-  return firestore
-      .collection('users')
-      .doc(userId)
-      .snapshots()
-      .map((DocumentSnapshot<Map<String, dynamic>> snapshot) {
-    if (snapshot.exists) {
-      return UserModel.fromMap(snapshot.data()!);
-    } else {
-      return null;
-    }
-  });
-}
+    FirebaseFirestore firestore = FirebaseFirestore.instance;
+    return firestore
+        .collection('users')
+        .doc(userId)
+        .snapshots()
+        .map((DocumentSnapshot<Map<String, dynamic>> snapshot) {
+      if (snapshot.exists) {
+        return UserModel.fromMap(snapshot.data()!);
+      } else {
+        return null;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,11 +82,13 @@ class AppDrawerState extends State<AppDrawer> {
               padding: EdgeInsets.zero,
               children: [
                 UserAccountsDrawerHeader(
-                  accountName: Text(user.userFirstName + ' ' + user.userLastName),
+                  accountName:
+                      Text(user.userFirstName + ' ' + user.userLastName),
                   accountEmail: Text(user.userEmail),
                   currentAccountPicture: CircleAvatar(
                     child: ClipOval(
-                      child: user.userProfile != null && user.userProfile.isNotEmpty
+                      child: user.userProfile != null &&
+                              user.userProfile.isNotEmpty
                           ? Image.network(
                               user.userProfile,
                               width: 90,
@@ -111,7 +110,8 @@ class AppDrawerState extends State<AppDrawer> {
                               height: 90,
                               fit: BoxFit.cover,
                             ),
-                    ),backgroundColor: AppConfig.appSecondaryTheme,
+                    ),
+                    backgroundColor: AppConfig.appSecondaryTheme,
                   ),
                   decoration: BoxDecoration(
                     color: AppConfig.appSecondaryTheme,
@@ -122,79 +122,67 @@ class AppDrawerState extends State<AppDrawer> {
                       ),
                       image: const AssetImage('assets/images/campus_img_2.png'),
                       fit: BoxFit.cover,
-                      ),
                     ),
                   ),
-                  ListTile(
-                    leading: const Icon(Icons.payments_outlined),
-                    title: const Text('Payment Procedure'),
-                    onTap: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const PaymentProcedures()));
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.contact_mail_outlined),
-                    title: const Text('Contact Info'),
-                    onTap: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const ContactInfo()));
-                    },
-                  ),
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(Icons.person_outline),
-                    title: const Text('Account Settings'),
-                    onTap: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const AccountSettings()));
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.help_outline_outlined),
-                    title: const Text('Help'),
-                    onTap: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const Help()));
-                    },
-                  ),
-                  const Divider(),
-                  ListTile(
-            leading: const Icon(Icons.exit_to_app_outlined),
-            title: const Text('Log out'),
-            onTap: () async {
-              // Show confirmation dialog
-              bool logoutConfirmed = await showLogoutConfirmationDialog(context);
-              if (logoutConfirmed) {
-                // Reset the 'dialogShown' flag to false during logout
-                SharedPreferences prefs = await SharedPreferences.getInstance();
-                prefs.setBool('dialogShown', false);
+                ),
+                ListTile(
+                  leading: const Icon(Icons.payments_outlined),
+                  title: const Text('Payment Procedure'),
+                  onTap: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const PaymentProcedures()));
+                  },
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.person_outline),
+                  title: const Text('Account Settings'),
+                  onTap: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const AccountSettings()));
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.help_outline_outlined),
+                  title: const Text('Help'),
+                  onTap: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => const Help()));
+                  },
+                ),
+                const Divider(),
+                ListTile(
+                  leading: const Icon(Icons.exit_to_app_outlined),
+                  title: const Text('Log out'),
+                  onTap: () async {
+                    // Show confirmation dialog
+                    bool logoutConfirmed =
+                        await showLogoutConfirmationDialog(context);
+                    if (logoutConfirmed) {
+                      // Reset the 'dialogShown' flag to false during logout
+                      SharedPreferences prefs =
+                          await SharedPreferences.getInstance();
+                      prefs.setBool('dialogShown', false);
 
-                InAppWebViewController.clearAllCache();
+                      // Perform the logout process
+                      await FirebaseAuth.instance.signOut();
 
-                // Perform the logout process
-                await FirebaseAuth.instance.signOut();
-
-                // Navigate to the Login screen after successful logout
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const Login()),
-                  (route) =>
-                      false, // Remove all existing routes from the stack
-                );
-              }
-            },
-          ),
-                ],
-              );
+                      // Navigate to the Login screen after successful logout
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (context) => const Login()),
+                        (route) =>
+                            false, // Remove all existing routes from the stack
+                      );
+                    }
+                  },
+                ),
+              ],
+            );
           } else {
             return Container();
           }
@@ -205,27 +193,33 @@ class AppDrawerState extends State<AppDrawer> {
 
   Future<bool> showLogoutConfirmationDialog(BuildContext context) async {
     return await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("Logout"),
-          content: const Text("Are you sure you want to log out?"),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(false); // Close the dialog without logging out
-              },
-              child: const Text("No"),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(true); // Close the dialog and proceed with logout
-              },
-              child: const Text("Log out"),
-            ),
-          ],
-        );
-      },
-    ) ?? false; // Return false if the dialog is dismissed
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text("Logout"),
+              content: const Text("Are you sure you want to log out?"),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context)
+                        .pop(false); // Close the dialog without logging out
+                  },
+                  child: const Text("No",
+                  style: TextStyle(
+                    color: Colors.grey
+                  )),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context)
+                        .pop(true); // Close the dialog and proceed with logout
+                  },
+                  child: const Text("Log out"),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false; // Return false if the dialog is dismissed
   }
 }
