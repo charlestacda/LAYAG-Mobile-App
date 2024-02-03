@@ -6,6 +6,7 @@
         <package android:name="ph.com.bdo.retail" /> 
         <package android:name="ph.com.metrobank.mcc.mbonline" /> 
         <package android:name="ph.com.globe.gcash.android" /> 
+        <package android:name="com.bbopen.lpuapp" /> 
     </queries>
 
    <application

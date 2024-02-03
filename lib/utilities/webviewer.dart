@@ -79,7 +79,7 @@ class _WebViewerState extends State<WebViewer> {
                       _openPaymentContent();
                     },
                   ),
-                if (_shouldShowExternalAppButton())
+                if (_shouldShowExternalAppButton() || _ismroomsExtrnalApp())
                   IconButton(
                     icon: Icon(Icons.open_in_new), // Use your desired icon
                     onPressed: () {
@@ -237,6 +237,12 @@ class _WebViewerState extends State<WebViewer> {
     return (type == '#00a62d');
   }
 
+  bool _ismroomsExtrnalApp(){
+    final title = widget.pageTitle;
+
+    return (title == 'myLPU e-Learning');
+  }
+
   void _openExternalApp() async {
     final currentUrl = widget.initialUrl;
     String appStoreUrl = '';
@@ -250,6 +256,8 @@ class _WebViewerState extends State<WebViewer> {
       appStoreUrl = 'ph.com.metrobank.mcc.mbonline';
     } else if (currentUrl == 'new.gcash.com') {
       appStoreUrl = 'com.globe.gcash.android';
+    } else if (currentUrl == 'https://lpu.mrooms.net'){
+      appStoreUrl = 'com.bbopen.lpuapp';
     }
 
     // Check if the app can be launched
@@ -480,7 +488,7 @@ class _WebViewerState extends State<WebViewer> {
           }
           if (BBRNum) {
             BBRNum.value = '$userNo';
-            BBRNum.disabled = true;
+            BBRNum.readOnly = true;
           }
           if (BBREmail) {
             BBREmail.value = '$userEmail';
