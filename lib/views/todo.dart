@@ -12,8 +12,10 @@ import 'package:lpu_app/models/user_model.dart';
 import 'package:lpu_app/views/components/app_drawer.dart';
 import 'package:lpu_app/views/help.dart';
 import 'package:lpu_app/views/notifications.dart';
+import 'package:lpu_app/views/todo_archived.dart';
 import 'dart:async';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:uuid/uuid.dart';
 
 DateTime dateNow = DateTime.now();
 DateTime date = DateTime(dateNow.year, dateNow.month, dateNow.day);
@@ -59,6 +61,10 @@ class ToDoState extends State<ToDo> {
   String? userID;
   List<dynamic> combinedTasks = [];
   late Timer _timer;
+  late User? _user;
+  late String userType;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   bool _isLoading = false;
 
@@ -68,6 +74,7 @@ class ToDoState extends State<ToDo> {
     fetchUserID();
     getToDo();
     getUserDetails(userID!);
+    checkForNewHandbooks();
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       // Update the UI every minute
@@ -81,6 +88,168 @@ class ToDoState extends State<ToDo> {
     // Cancel the timer to avoid memory leaks
     _timer.cancel();
     super.dispose();
+  }
+
+  Future<void> checkForNewHandbooks() async {
+    final FirebaseAuth _auth = FirebaseAuth.instance;
+    final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+    if (_auth.currentUser != null) {
+      final currentUser = _auth.currentUser;
+      final userId = currentUser?.uid;
+
+      // Reference to the user's handbook collection
+      final userHandbookCollectionRef =
+          _firestore.collection('users').doc(userId).collection('handbooks');
+
+      // Get a list of handbook IDs the user already has
+      final userHandbookIds = await userHandbookCollectionRef.get().then(
+          (querySnapshot) => querySnapshot.docs.map((doc) => doc.id).toList());
+
+      // Reference to the 'handbooks' collection
+      final handbooksRef = _firestore.collection('handbooks');
+
+      // Update existing handbooks
+      await Future.forEach(userHandbookIds, (handbookId) async {
+        final userHandbookDocRef = userHandbookCollectionRef.doc(handbookId);
+        final handbookDocSnapshot = await handbooksRef.doc(handbookId).get();
+        if (handbookDocSnapshot.exists) {
+          final handbookTitle = handbookDocSnapshot.data()?['title'];
+          final handbookContent = handbookDocSnapshot.data()?['content'];
+
+          // Update the title and content fields in the user's handbook document
+          await userHandbookDocRef.update({
+            'title': handbookTitle,
+            'content': handbookContent,
+          });
+
+          // Call function to update notification when content is updated
+          await updateHandbookContent(handbookId, handbookContent, userId!);
+
+          print(
+              'Notification added for user: ${currentUser?.email} - Handbook ID: $handbookId');
+        }
+      });
+
+      // Fetch all handbooks that are not yet stored for the user
+      final handbooksSnapshot = await handbooksRef.get();
+
+      if (handbooksSnapshot.docs.isNotEmpty) {
+        // Loop through each handbook and store it in the user's collection if not already present
+        for (final handbookDoc in handbooksSnapshot.docs) {
+          final handbookId = handbookDoc.id;
+          if (!userHandbookIds.contains(handbookId)) {
+            final title = handbookDoc.data()['title'];
+            final content = handbookDoc.data()['content'];
+
+            // Store the handbook in the user's collection with the ID as the document name
+            await userHandbookCollectionRef.doc(handbookId).set({
+              'title': title,
+              'content': content,
+            });
+
+            // Do something with the new handbook, like showing a notification or updating UI
+            print(
+                'New handbook stored for user: ${currentUser?.email} - ID: $handbookId');
+          }
+        }
+      } else {
+        print('No handbooks found in the database.');
+      }
+    } else {
+      print('No user is currently logged in.');
+    }
+  }
+
+  Future<void> updateHandbookContent(
+      String handbookId, String newContent, String userId) async {
+    final handbookRef = _firestore.collection('handbooks').doc(handbookId);
+
+    // Update the content of the handbook
+    await handbookRef.update({
+      'content': newContent,
+    });
+
+    // Call the notification function only when content is updated
+    final handbookDoc = await handbookRef.get();
+    if (handbookDoc.exists) {
+      final handbookTitle = handbookDoc.data()?['title'];
+      final handbookContent = handbookDoc.data()?['content'];
+      await checkAndUpdateNotification(
+          handbookId, handbookTitle, handbookContent, userId, _firestore);
+    }
+  }
+
+  Future<void> checkAndUpdateNotification(
+      String handbookId,
+      String handbookTitle,
+      String handbookContent,
+      String userId,
+      FirebaseFirestore firestore) async {
+    // Reference to the 'handbooks' collection
+    final handbooksRef = firestore.collection('handbooks');
+
+    // Get the previous content of the handbook
+    final prevContentQuery = await handbooksRef
+        .doc(handbookId)
+        .collection('previous_content')
+        .orderBy('timestamp', descending: true)
+        .limit(1)
+        .get();
+
+    String prevContent = '';
+    if (prevContentQuery.docs.isNotEmpty) {
+      prevContent = prevContentQuery.docs.first.data()['content'];
+    }
+
+    // Check if content has been updated
+    if (prevContent != handbookContent) {
+      final notificationName = '$handbookTitle updated';
+      final notificationTitle = 'The $handbookTitle has been updated!';
+
+      final uniqueNotificationId =
+          Uuid().v4(); // Generate a unique ID for the notification
+
+      // Add the notification directly under the 'Notifications' map within the user's document
+      final notificationRef = firestore.collection('users').doc(userId);
+      await notificationRef.update({
+        'Notifications.$uniqueNotificationId': {
+          // Use the unique ID as the key
+          'notifName': notificationName,
+          'notifTitle': notificationTitle,
+        },
+      });
+
+      print('Notification added for user: $userId - Handbook ID: $handbookId');
+      sendUpdateNotification(uniqueNotificationId, '$handbookTitle updated!',
+          'The $handbookTitle has been updated!');
+
+      // Update the previous content in the database
+      await handbooksRef.doc(handbookId).collection('previous_content').add({
+        'content': handbookContent,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  Future<void> sendUpdateNotification(
+      String uniqueId, String title, String message) async {
+    PermissionStatus status = await Permission.notification.status;
+
+    if (status.isGranted) {
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: uniqueId.hashCode, // Use the unique ID as the notification ID
+          channelKey: 'basic_channel', // Channel key defined in initialization
+          title: title,
+          body: message,
+        ),
+      );
+    } else {
+      // Handle the case when notification permission is not granted
+      // You may choose to show a message or log a warning
+      print("Notification permission is not granted. Notification not sent.");
+    }
   }
 
   void sortTodoListByDeadline() {
@@ -324,15 +493,15 @@ class ToDoState extends State<ToDo> {
           'createdDate': convertedIncompleteTask.createdDate,
           'deadlineDate': convertedIncompleteTask.deadlineDate,
           'todoStatus': 'Pending',
-          'DueSoonNotificationSent':
+          'dueSoonNotificationSent':
               convertedIncompleteTask.dueSoonNotificationSent,
-          'DueTomNotificationSent':
+          'dueTomNotificationSent':
               convertedIncompleteTask.dueSixNotificationSent,
-          'DueSixNotificationSent':
+          'dueSixNotificationSent':
               convertedIncompleteTask.dueSixNotificationSent,
-          'AlmostDueNotificationSent':
+          'almostDueNotificationSent':
               convertedIncompleteTask.almostDueNotificationSent,
-          'OverdueNotificationSent':
+          'overdueNotificationSent':
               convertedIncompleteTask.overdueNotificationSent,
         }
       }, SetOptions(merge: true));
@@ -351,26 +520,29 @@ class ToDoState extends State<ToDo> {
 
   void removeCompletedTask(int index) async {
     try {
-      // Store the information that needs to be deleted
-      final taskToRemove = completedList[index];
+      // Store the information that needs to be archived
+      final taskToArchive = completedList[index];
 
       // Remove the card immediately from the UI
       setState(() {
         completedList.removeAt(index);
       });
 
-      // Delete the stored information from the `completed_list` collection in Firestore
-      await firestore.collection('completed_list').doc(userID).update({
-        taskToRemove.TodoTask: FieldValue.delete(),
+      // Update the todoStatus in the `todo_list` collection in Firestore
+      await FirebaseFirestore.instance
+          .collection('completed_list')
+          .doc(userID)
+          .update({
+        '${taskToArchive.TodoTask}.TodoStatus': 'Archived',
       }).then((_) {
-        // Successfully deleted from Firestore
+        // Successfully updated in Firestore
       }).catchError((error) {
-        // Handle error while deleting from Firestore
+        // Handle error while updating in Firestore
         setState(() {
-          // Add the task back to the list if deletion from Firestore fails
-          completedList.insert(index, taskToRemove);
+          // Revert the change in todoList if updating in Firestore fails
+          completedList[index].TodoStatus = taskToArchive.TodoStatus;
         });
-        Fluttertoast.showToast(msg: 'Failed to remove task');
+        Fluttertoast.showToast(msg: 'Failed to archive task');
       });
     } catch (e) {
       print('Error removing task: $e');
@@ -379,30 +551,42 @@ class ToDoState extends State<ToDo> {
 
   void removeTodoTask(int index) async {
     try {
-      // Store the information that needs to be deleted
-      final taskToRemove = todoList[index];
+      // Store the information that needs to be archived
+      final taskToArchive = todoList[index];
 
-      // Remove the card immediately from the UI
+      // Update the todoStatus field to "Archived"
       setState(() {
         todoList.removeAt(index);
       });
 
-      // Delete the stored information from the `completed_list` collection in Firestore
-      await firestore.collection('todo_list').doc(userID).update({
-        taskToRemove.todoTask: FieldValue.delete(),
+      // Update the todoStatus in the `todo_list` collection in Firestore
+      await FirebaseFirestore.instance
+          .collection('todo_list')
+          .doc(userID)
+          .update({
+        '${taskToArchive.todoTask}.todoStatus': 'Archived',
       }).then((_) {
-        // Successfully deleted from Firestore
+        // Successfully updated in Firestore
       }).catchError((error) {
-        // Handle error while deleting from Firestore
+        // Handle error while updating in Firestore
         setState(() {
-          // Add the task back to the list if deletion from Firestore fails
-          todoList.insert(index, taskToRemove);
+          // Revert the change in todoList if updating in Firestore fails
+          todoList[index].todoStatus = taskToArchive.todoStatus;
         });
-        Fluttertoast.showToast(msg: 'Failed to remove task');
+        Fluttertoast.showToast(msg: 'Failed to archive task');
       });
     } catch (e) {
-      print('Error removing task: $e');
+      print('Error archiving task: $e');
     }
+  }
+
+  void reloadData() {
+    setState(() {
+      // Call your data fetching methods here
+      getToDo(); // Example data fetching method
+      getUserDetails(userID!); // Example data fetching method
+      checkForNewHandbooks(); // Example data fetching method
+    });
   }
 
   @override
@@ -711,303 +895,131 @@ class ToDoState extends State<ToDo> {
                       width: double.infinity,
                     ),
                     padding: const EdgeInsets.fromLTRB(0, 0, 0, 16)),
-                    Container(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppConfig.appSecondaryTheme,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-              ),
-            ),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(0, 10, 0, 16),
-                    child: Text(
-                      todoList.length == 0
-                          ? 'No Ongoing Task'
-                          : 'Ongoing (${todoList.length})',
-                      textAlign: TextAlign.left,
-                      style: const TextStyle(
-                        fontFamily: 'Futura',
-                        fontSize: 28,
-                        fontWeight: FontWeight.w600,
-                        color: AppConfig.appWhiteAlphaTheme
+                // Button to navigate to archived tasks
+                Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: IconButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  TodoArchivedScreen(reloadData: reloadData),
+                            ),
+                          );
+                        },
+                        icon: Icon(Icons.archive),
+                        iconSize: 30, // Adjust icon size as needed
+                        color: AppConfig.appSecondaryTheme,
                       ),
                     ),
                   ),
-                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppConfig.appSecondaryTheme,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
                     ),
-                Container(
-                  
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            decoration: BoxDecoration(
-              color: Color.fromARGB(255, 235, 231, 231),
-            
-              ),
-            
-                child: ListView.builder(
-                  scrollDirection: Axis.vertical,
-                  physics: const NeverScrollableScrollPhysics(),
-                  shrinkWrap: true,
-                  itemCount: todoList.length,
-                  itemBuilder: (context, index) {
-                    DateTime deadlineDate =
-                        getDateTimeFromString(todoList[index].deadlineDate);
-                    Color taskColor = _getTaskColor(deadlineDate);
-
-                    return Card(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      color: taskColor,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.fromLTRB(0, 0, 8, 0),
-                        title: Text(
-                          todoList[index].todoTask,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                        subtitle: Text(
-                          todoList[index].deadlineDate,
-                          style: TextStyle(
-                            color: Colors.white,
-                          ),
-                        ),
-                        leading: IconButton(
-                          icon: const Icon(Icons.check_box_outline_blank),
-                          color: Colors.white,
-                          onPressed: () {
-                            setState(() {
-                              final completedTask = todoList.removeAt(index);
-                              final convertedCompletedTask = CompleteTaskModel(
-                                CreatedDate: completedTask.createdDate,
-                                DeadlineDate: completedTask.deadlineDate,
-                                TodoTask: completedTask.todoTask,
-                                TodoStatus: 'Completed',
-                                DueSoonNotificationSent:
-                                    completedTask.dueSoonNotificationSent,
-                                DueTomNotificationSent:
-                                    completedTask.dueTomNotificationSent,
-                                DueSixNotificationSent:
-                                    completedTask.dueSixNotificationSent,
-                                AlmostDueNotificationSent:
-                                    completedTask.almostDueNotificationSent,
-                                OverdueNotificationSent:
-                                    completedTask.overdueNotificationSent,
-                              );
-                              completedList.add(convertedCompletedTask);
-
-                              updateFirestoreForCompletion(
-                                  completedTask, convertedCompletedTask);
-                            });
-
-                            sortTodoListByDeadline();
-                            sortCompletedListByDeadline();
-                          },
-                        ),
-                        trailing: PopupMenuButton<String>(
-                          icon:
-                              const Icon(Icons.more_vert, color: Colors.white),
-                          onSelected: (String value) {
-                            if (value == 'edit') {
-                              // Show dialog for editing task
-                              _showEditDialog(context, todoList[index]);
-                            } else if (value == 'delete') {
-                              showDialog(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    title: const Text('Confirm Deletion',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        )),
-                                    content: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                            'Are you sure you want to delete the following task?'),
-                                        const SizedBox(height: 10),
-                                        Text(todoTask.text,
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold)),
-                                        Text(
-                                          todoList[index].todoTask,
-                                          style: const TextStyle(
-                                              color:
-                                                  AppConfig.appSecondaryTheme),
-                                        ),
-                                      ],
-                                    ),
-                                    actions: <Widget>[
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.of(context).pop();
-                                        },
-                                        child: const Text(
-                                          'Cancel',
-                                          style: TextStyle(
-                                            color: Colors
-                                                .grey, // Set the color to grey
-                                          ),
-                                        ),
-                                      ),
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.of(context).pop();
-                                          cancelScheduledNotifications(
-                                              todoList[index].todoTask);
-                                          removeTodoTask(index);
-                                          sortTodoListByDeadline();
-                                          sortCompletedListByDeadline();
-                                        },
-                                        child: const Text('Delete'),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-                            }
-                          },
-                          itemBuilder: (BuildContext context) =>
-                              <PopupMenuEntry<String>>[
-                            const PopupMenuItem<String>(
-                              value: 'edit',
-                              child: Text('Edit'),
-                            ),
-                            const PopupMenuItem<String>(
-                              value: 'delete',
-                              child: Text('Delete'),
-                            ),
-                            // Add other options if needed
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppConfig.appSecondaryTheme,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-              ),
-            ),
+                  ),
                   child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(0, 32, 0, 16),
-                    child: Row(
-                      children: [
-                        Text(
-                          completedList.length == 0
-                              ? 'No Completed Task'
-                              : 'Completed (${completedList.length})',
-                          textAlign: TextAlign.left,
-                          style: const TextStyle(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(0, 10, 0, 16),
+                      child: Text(
+                        todoList.length == 0
+                            ? 'No Ongoing Task'
+                            : 'Ongoing (${todoList.length})',
+                        textAlign: TextAlign.left,
+                        style: const TextStyle(
                             fontFamily: 'Futura',
                             fontSize: 28,
                             fontWeight: FontWeight.w600,
-                            color: AppConfig.appWhiteAlphaTheme,
-                          ),
-                        ),
-                        Spacer(), // Spacer takes up any available space
-                        if (completedList.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8.0),
-                                color: Color(0xFFD94141),
-                              ),
-                              child: IconButton(
-                                onPressed: deleteAllCompleted,
-                                icon: const Icon(Icons.delete),
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                      ],
+                            color: AppConfig.appWhiteAlphaTheme),
+                      ),
                     ),
                   ),
                 ),
-                ),
                 Container(
-                  
                   padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            decoration: BoxDecoration(
-              color: Color.fromARGB(255, 235, 231, 231),
-              ),
-                child: ListView.builder(
+                  decoration: BoxDecoration(
+                    color: Color.fromARGB(255, 235, 231, 231),
+                  ),
+                  child: ListView.builder(
                     scrollDirection: Axis.vertical,
                     physics: const NeverScrollableScrollPhysics(),
                     shrinkWrap: true,
-                    itemCount: completedList.length,
-                    itemBuilder: (BuildContext context, int index) {
-                      return Card(
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4.0)),
-                          child: ListTile(
-                            contentPadding:
-                                const EdgeInsets.fromLTRB(0, 0, 0, 0),
-                            title: Text(
-                              completedList[index].TodoTask,
-                              style: const TextStyle(
-                                  color: Color(0xff606060),
-                                  decoration: TextDecoration.lineThrough),
-                            ),
-                            subtitle: Text(
-                              completedList[index].DeadlineDate,
-                              style: const TextStyle(
-                                color: Color(0xff606060),
-                              ),
-                            ),
-                            leading: IconButton(
-                              icon: const Icon(Icons.check_box_outlined),
-                              color: const Color(0xff606060),
-                              onPressed: () {
-                                setState(() {
-                                  final incompleteTask =
-                                      completedList.removeAt(index);
-                                  final convertedIncompleteTask = TaskModel(
-                                    createdDate: incompleteTask.CreatedDate,
-                                    deadlineDate: incompleteTask.DeadlineDate,
-                                    todoTask: incompleteTask.TodoTask,
-                                    todoStatus: 'Pending',
-                                    dueSoonNotificationSent:
-                                        incompleteTask.DueSoonNotificationSent,
-                                    dueTomNotificationSent:
-                                        incompleteTask.DueTomNotificationSent,
-                                    dueSixNotificationSent:
-                                        incompleteTask.DueSixNotificationSent,
-                                    almostDueNotificationSent: incompleteTask
-                                        .AlmostDueNotificationSent,
-                                    overdueNotificationSent:
-                                        incompleteTask.OverdueNotificationSent,
-                                  );
-                                  todoList.add(convertedIncompleteTask);
+                    itemCount: todoList.length,
+                    itemBuilder: (context, index) {
+                      DateTime deadlineDate =
+                          getDateTimeFromString(todoList[index].deadlineDate);
+                      Color taskColor = _getTaskColor(deadlineDate);
 
-                                  updateFirestoreForIncompletion(
-                                      incompleteTask, convertedIncompleteTask);
-                                });
-                                sortTodoListByDeadline();
-                                sortCompletedListByDeadline();
-                              },
+                      return Card(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        color: taskColor,
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.fromLTRB(0, 0, 8, 0),
+                          title: Text(
+                            todoList[index].todoTask,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
                             ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.close),
-                              color: const Color(0xff606060),
-                              onPressed: () {
+                          ),
+                          subtitle: Text(
+                            todoList[index].deadlineDate,
+                            style: TextStyle(
+                              color: Colors.white,
+                            ),
+                          ),
+                          leading: IconButton(
+                            icon: const Icon(Icons.check_box_outline_blank),
+                            color: Colors.white,
+                            onPressed: () {
+                              setState(() {
+                                final completedTask = todoList.removeAt(index);
+                                final convertedCompletedTask =
+                                    CompleteTaskModel(
+                                  CreatedDate: completedTask.createdDate,
+                                  DeadlineDate: completedTask.deadlineDate,
+                                  TodoTask: completedTask.todoTask,
+                                  TodoStatus: 'Completed',
+                                  DueSoonNotificationSent:
+                                      completedTask.dueSoonNotificationSent,
+                                  DueTomNotificationSent:
+                                      completedTask.dueTomNotificationSent,
+                                  DueSixNotificationSent:
+                                      completedTask.dueSixNotificationSent,
+                                  AlmostDueNotificationSent:
+                                      completedTask.almostDueNotificationSent,
+                                  OverdueNotificationSent:
+                                      completedTask.overdueNotificationSent,
+                                );
+                                completedList.add(convertedCompletedTask);
+
+                                updateFirestoreForCompletion(
+                                    completedTask, convertedCompletedTask);
+                              });
+
+                              sortTodoListByDeadline();
+                              sortCompletedListByDeadline();
+                            },
+                          ),
+                          trailing: PopupMenuButton<String>(
+                            icon: const Icon(Icons.more_vert,
+                                color: Colors.white),
+                            onSelected: (String value) {
+                              if (value == 'edit') {
+                                // Show dialog for editing task
+                                _showEditDialog(context, todoList[index]);
+                              } else if (value == 'delete') {
                                 showDialog(
                                   context: context,
                                   builder: (BuildContext context) {
@@ -1028,7 +1040,7 @@ class ToDoState extends State<ToDo> {
                                               style: TextStyle(
                                                   fontWeight: FontWeight.bold)),
                                           Text(
-                                            completedList[index].TodoTask,
+                                            todoList[index].todoTask,
                                             style: const TextStyle(
                                                 color: AppConfig
                                                     .appSecondaryTheme),
@@ -1052,8 +1064,8 @@ class ToDoState extends State<ToDo> {
                                           onPressed: () {
                                             Navigator.of(context).pop();
                                             cancelScheduledNotifications(
-                                                completedList[index].TodoTask);
-                                            removeCompletedTask(index);
+                                                todoList[index].todoTask);
+                                            removeTodoTask(index);
                                             sortTodoListByDeadline();
                                             sortCompletedListByDeadline();
                                           },
@@ -1063,11 +1075,204 @@ class ToDoState extends State<ToDo> {
                                     );
                                   },
                                 );
-                              },
+                              }
+                            },
+                            itemBuilder: (BuildContext context) =>
+                                <PopupMenuEntry<String>>[
+                              const PopupMenuItem<String>(
+                                value: 'edit',
+                                child: Text('Edit'),
+                              ),
+                              const PopupMenuItem<String>(
+                                value: 'delete',
+                                child: Text('Delete'),
+                              ),
+                              // Add other options if needed
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppConfig.appSecondaryTheme,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(0, 32, 0, 16),
+                      child: Row(
+                        children: [
+                          Text(
+                            completedList.length == 0
+                                ? 'No Completed Task'
+                                : 'Completed (${completedList.length})',
+                            textAlign: TextAlign.left,
+                            style: const TextStyle(
+                              fontFamily: 'Futura',
+                              fontSize: 28,
+                              fontWeight: FontWeight.w600,
+                              color: AppConfig.appWhiteAlphaTheme,
                             ),
-                          ));
-                    }),
-            ),]),
+                          ),
+                          Spacer(), // Spacer takes up any available space
+                          if (completedList.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8.0),
+                                  color: Color(0xFFD94141),
+                                ),
+                                child: IconButton(
+                                  onPressed: deleteAllCompleted,
+                                  icon: const Icon(Icons.delete),
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Color.fromARGB(255, 235, 231, 231),
+                  ),
+                  child: ListView.builder(
+                      scrollDirection: Axis.vertical,
+                      physics: const NeverScrollableScrollPhysics(),
+                      shrinkWrap: true,
+                      itemCount: completedList.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        return Card(
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4.0)),
+                            child: ListTile(
+                              contentPadding:
+                                  const EdgeInsets.fromLTRB(0, 0, 0, 0),
+                              title: Text(
+                                completedList[index].TodoTask,
+                                style: const TextStyle(
+                                    color: Color(0xff606060),
+                                    decoration: TextDecoration.lineThrough),
+                              ),
+                              subtitle: Text(
+                                completedList[index].DeadlineDate,
+                                style: const TextStyle(
+                                  color: Color(0xff606060),
+                                ),
+                              ),
+                              leading: IconButton(
+                                icon: const Icon(Icons.check_box_outlined),
+                                color: const Color(0xff606060),
+                                onPressed: () {
+                                  setState(() {
+                                    final incompleteTask =
+                                        completedList.removeAt(index);
+                                    final convertedIncompleteTask = TaskModel(
+                                      createdDate: incompleteTask.CreatedDate,
+                                      deadlineDate: incompleteTask.DeadlineDate,
+                                      todoTask: incompleteTask.TodoTask,
+                                      todoStatus: 'Pending',
+                                      dueSoonNotificationSent: incompleteTask
+                                          .DueSoonNotificationSent,
+                                      dueTomNotificationSent:
+                                          incompleteTask.DueTomNotificationSent,
+                                      dueSixNotificationSent:
+                                          incompleteTask.DueSixNotificationSent,
+                                      almostDueNotificationSent: incompleteTask
+                                          .AlmostDueNotificationSent,
+                                      overdueNotificationSent: incompleteTask
+                                          .OverdueNotificationSent,
+                                    );
+                                    todoList.add(convertedIncompleteTask);
+
+                                    updateFirestoreForIncompletion(
+                                        incompleteTask,
+                                        convertedIncompleteTask);
+                                  });
+                                  sortTodoListByDeadline();
+                                  sortCompletedListByDeadline();
+                                },
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.close),
+                                color: const Color(0xff606060),
+                                onPressed: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return AlertDialog(
+                                        title: const Text('Confirm Deletion',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            )),
+                                        content: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                                'Are you sure you want to delete the following task?'),
+                                            const SizedBox(height: 10),
+                                            Text(todoTask.text,
+                                                style: TextStyle(
+                                                    fontWeight:
+                                                        FontWeight.bold)),
+                                            Text(
+                                              completedList[index].TodoTask,
+                                              style: const TextStyle(
+                                                  color: AppConfig
+                                                      .appSecondaryTheme),
+                                            ),
+                                          ],
+                                        ),
+                                        actions: <Widget>[
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.of(context).pop();
+                                            },
+                                            child: const Text(
+                                              'Cancel',
+                                              style: TextStyle(
+                                                color: Colors
+                                                    .grey, // Set the color to grey
+                                              ),
+                                            ),
+                                          ),
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.of(context).pop();
+                                              cancelScheduledNotifications(
+                                                  completedList[index]
+                                                      .TodoTask);
+                                              removeCompletedTask(index);
+                                              sortTodoListByDeadline();
+                                              sortCompletedListByDeadline();
+                                            },
+                                            child: const Text('Delete'),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                            ));
+                      }),
+                ),
+              ]),
             ),
           ),
         ),
@@ -1122,9 +1327,11 @@ class ToDoState extends State<ToDo> {
     final user = FirebaseAuth.instance.currentUser;
     try {
       if (user != null) {
-        await _completedReference
-            .doc(user.uid)
-            .update({completedTask.TodoTask: FieldValue.delete()});
+        final Map<String, dynamic> updateData = {
+          '${completedTask.TodoTask}.TodoStatus': 'Archived',
+        };
+
+        await _completedReference.doc(user.uid).update(updateData);
       }
     } catch (e) {
       print('Error removing completed task: $e');
@@ -1547,6 +1754,7 @@ class ToDoState extends State<ToDo> {
             .collection('todo_list')
             .doc(user.uid) // Fetch using user's UID
             .get();
+
         final completedSnapshot = await FirebaseFirestore.instance
             .collection('completed_list')
             .doc(user.uid) // Fetch using user's UID
@@ -1554,32 +1762,38 @@ class ToDoState extends State<ToDo> {
 
         if (todoSnapshot.exists) {
           final _tasksMap = Map<String, dynamic>.from(
-            todoSnapshot.data() as Map<String, dynamic>,
-          );
-          print(_tasksMap);
-          final tasksList = _tasksMap.entries.map((entry) {
-            final Map<String, dynamic> taskData =
-                entry.value as Map<String, dynamic>;
-            return TaskModel(
-              createdDate: taskData['createdDate'] ?? '',
-              deadlineDate: taskData['deadlineDate'] ?? '',
-              todoTask: taskData['todoTask'] ?? '',
-              todoStatus: taskData['todoStatus'] ?? '',
-              dueSoonNotificationSent:
-                  taskData['dueSoonNotificationSent'] as bool? ?? false,
-              dueTomNotificationSent:
-                  taskData['dueTomNotificationSent'] as bool? ?? false,
-              dueSixNotificationSent:
-                  taskData['dueSixNotificationSent'] as bool? ?? false,
-              almostDueNotificationSent:
-                  taskData['almostDueNotificationSent'] as bool? ?? false,
-              overdueNotificationSent:
-                  taskData['overdueNotificationSent'] as bool? ?? false,
-            );
-          }).toList();
+              todoSnapshot.data() as Map<String, dynamic>);
+          final tasksList = _tasksMap.entries
+              .map((entry) {
+                final Map<String, dynamic> taskData =
+                    entry.value as Map<String, dynamic>;
+                if (taskData['todoStatus'] != "Archived") {
+                  return TaskModel(
+                    createdDate: taskData['createdDate'] ?? '',
+                    deadlineDate: taskData['deadlineDate'] ?? '',
+                    todoTask: taskData['todoTask'] ?? '',
+                    todoStatus: taskData['todoStatus'] ?? '',
+                    dueSoonNotificationSent:
+                        taskData['dueSoonNotificationSent'] as bool? ?? false,
+                    dueTomNotificationSent:
+                        taskData['dueTomNotificationSent'] as bool? ?? false,
+                    dueSixNotificationSent:
+                        taskData['dueSixNotificationSent'] as bool? ?? false,
+                    almostDueNotificationSent:
+                        taskData['almostDueNotificationSent'] as bool? ?? false,
+                    overdueNotificationSent:
+                        taskData['overdueNotificationSent'] as bool? ?? false,
+                  );
+                } else {
+                  return null;
+                }
+              })
+              .where((task) => task != null)
+              .toList();
 
           setState(() {
-            todoList = tasksList;
+            todoList =
+                tasksList.cast<TaskModel>(); // Cast to remove null values
             sortTodoListByDeadline(); // Sort todoList after setting state
           });
         } else {
@@ -1590,15 +1804,24 @@ class ToDoState extends State<ToDo> {
 
         if (completedSnapshot.exists) {
           final cTasksMap = Map<String, dynamic>.from(
-            completedSnapshot.data() as Map<String, dynamic>,
-          );
+              completedSnapshot.data() as Map<String, dynamic>);
           final cTasksList = cTasksMap.entries
-              .map((entry) => CompleteTaskModel.fromMap(
-                  Map<String, dynamic>.from(entry.value)))
+              .map((entry) {
+                final Map<String, dynamic> taskData =
+                    entry.value as Map<String, dynamic>;
+                if (taskData['TodoStatus'] != "Archived") {
+                  return CompleteTaskModel.fromMap(
+                      Map<String, dynamic>.from(entry.value));
+                } else {
+                  return null;
+                }
+              })
+              .where((task) => task != null)
               .toList();
 
           setState(() {
-            completedList = cTasksList;
+            completedList = cTasksList
+                .cast<CompleteTaskModel>(); // Cast to remove null values
             sortCompletedListByDeadline(); // Sort completedList after setting state
           });
         } else {

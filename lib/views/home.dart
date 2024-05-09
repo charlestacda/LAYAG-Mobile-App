@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:external_app_launcher/external_app_launcher.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -24,8 +25,8 @@ import 'package:http/http.dart' as http;
 import 'package:lpu_app/models/portal_model.dart';
 import 'package:lpu_app/models/tip_model.dart';
 import 'package:lpu_app/utilities/webviewer.dart';
-
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:uuid/uuid.dart';
 
 class Home extends StatefulWidget {
   const Home({Key? key}) : super(key: key);
@@ -52,6 +53,8 @@ class HomeState extends State<Home> {
   final FirebaseAnalytics analytics = FirebaseAnalytics.instance;
   late User? _user;
   late String userType;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
@@ -63,6 +66,7 @@ class HomeState extends State<Home> {
     });
 
     fetchUserType();
+    checkForNewHandbooks();
 
     loadSelectedOption().then((value) {
       setState(() {
@@ -91,6 +95,168 @@ class HomeState extends State<Home> {
         }
       });
     });
+  }
+
+  Future<void> checkForNewHandbooks() async {
+    final FirebaseAuth _auth = FirebaseAuth.instance;
+    final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+    if (_auth.currentUser != null) {
+      final currentUser = _auth.currentUser;
+      final userId = currentUser?.uid;
+
+      // Reference to the user's handbook collection
+      final userHandbookCollectionRef =
+          _firestore.collection('users').doc(userId).collection('handbooks');
+
+      // Get a list of handbook IDs the user already has
+      final userHandbookIds = await userHandbookCollectionRef.get().then(
+          (querySnapshot) => querySnapshot.docs.map((doc) => doc.id).toList());
+
+      // Reference to the 'handbooks' collection
+      final handbooksRef = _firestore.collection('handbooks');
+
+      // Update existing handbooks
+      await Future.forEach(userHandbookIds, (handbookId) async {
+        final userHandbookDocRef = userHandbookCollectionRef.doc(handbookId);
+        final handbookDocSnapshot = await handbooksRef.doc(handbookId).get();
+        if (handbookDocSnapshot.exists) {
+          final handbookTitle = handbookDocSnapshot.data()?['title'];
+          final handbookContent = handbookDocSnapshot.data()?['content'];
+
+          // Update the title and content fields in the user's handbook document
+          await userHandbookDocRef.update({
+            'title': handbookTitle,
+            'content': handbookContent,
+          });
+
+          // Call function to update notification when content is updated
+          await updateHandbookContent(handbookId, handbookContent, userId!);
+
+          print(
+              'Notification added for user: ${currentUser?.email} - Handbook ID: $handbookId');
+        }
+      });
+
+      // Fetch all handbooks that are not yet stored for the user
+      final handbooksSnapshot = await handbooksRef.get();
+
+      if (handbooksSnapshot.docs.isNotEmpty) {
+        // Loop through each handbook and store it in the user's collection if not already present
+        for (final handbookDoc in handbooksSnapshot.docs) {
+          final handbookId = handbookDoc.id;
+          if (!userHandbookIds.contains(handbookId)) {
+            final title = handbookDoc.data()['title'];
+            final content = handbookDoc.data()['content'];
+
+            // Store the handbook in the user's collection with the ID as the document name
+            await userHandbookCollectionRef.doc(handbookId).set({
+              'title': title,
+              'content': content,
+            });
+
+            // Do something with the new handbook, like showing a notification or updating UI
+            print(
+                'New handbook stored for user: ${currentUser?.email} - ID: $handbookId');
+          }
+        }
+      } else {
+        print('No handbooks found in the database.');
+      }
+    } else {
+      print('No user is currently logged in.');
+    }
+  }
+
+  Future<void> updateHandbookContent(
+      String handbookId, String newContent, String userId) async {
+    final handbookRef = _firestore.collection('handbooks').doc(handbookId);
+
+    // Update the content of the handbook
+    await handbookRef.update({
+      'content': newContent,
+    });
+
+    // Call the notification function only when content is updated
+    final handbookDoc = await handbookRef.get();
+    if (handbookDoc.exists) {
+      final handbookTitle = handbookDoc.data()?['title'];
+      final handbookContent = handbookDoc.data()?['content'];
+      await checkAndUpdateNotification(
+          handbookId, handbookTitle, handbookContent, userId, _firestore);
+    }
+  }
+
+  Future<void> checkAndUpdateNotification(
+      String handbookId,
+      String handbookTitle,
+      String handbookContent,
+      String userId,
+      FirebaseFirestore firestore) async {
+    // Reference to the 'handbooks' collection
+    final handbooksRef = firestore.collection('handbooks');
+
+    // Get the previous content of the handbook
+    final prevContentQuery = await handbooksRef
+        .doc(handbookId)
+        .collection('previous_content')
+        .orderBy('timestamp', descending: true)
+        .limit(1)
+        .get();
+
+    String prevContent = '';
+    if (prevContentQuery.docs.isNotEmpty) {
+      prevContent = prevContentQuery.docs.first.data()['content'];
+    }
+
+    // Check if content has been updated
+    if (prevContent != handbookContent) {
+      final notificationName = '$handbookTitle updated';
+      final notificationTitle = 'The $handbookTitle has been updated!';
+
+      final uniqueNotificationId =
+          Uuid().v4(); // Generate a unique ID for the notification
+
+      // Add the notification directly under the 'Notifications' map within the user's document
+      final notificationRef = firestore.collection('users').doc(userId);
+      await notificationRef.update({
+        'Notifications.$uniqueNotificationId': {
+          // Use the unique ID as the key
+          'notifName': notificationName,
+          'notifTitle': notificationTitle,
+        },
+      });
+
+      print('Notification added for user: $userId - Handbook ID: $handbookId');
+      sendUpdateNotification(uniqueNotificationId, '$handbookTitle updated!',
+          'The $handbookTitle has been updated!');
+
+      // Update the previous content in the database
+      await handbooksRef.doc(handbookId).collection('previous_content').add({
+        'content': handbookContent,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  Future<void> sendUpdateNotification(
+      String uniqueId, String title, String message) async {
+    PermissionStatus status = await Permission.notification.status;
+
+    if (status.isGranted) {
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: uniqueId.hashCode, // Use the unique ID as the notification ID
+          channelKey: 'basic_channel', // Channel key defined in initialization
+          title: title,
+          body: message,
+        ),
+      );
+    } else {
+      // Handle the case when notification permission is not granted
+      // You may choose to show a message or log a warning
+      print("Notification permission is not granted. Notification not sent.");
+    }
   }
 
   Future<void> _promptNotificationPermissions() async {
@@ -326,7 +492,7 @@ class HomeState extends State<Home> {
         portals.where((portal) => portal.color == "#00a62d").toList();
     List<Portal> adminPortals =
         portals.where((portal) => portal.color == "#2da6a6").toList();
-    
+
     return Scaffold(
       drawer: const AppDrawer(),
       appBar: AppBar(
@@ -464,7 +630,7 @@ class HomeState extends State<Home> {
                           return buildPortalCard(portal, textSize);
                         }),
                         if (libraryPortals.isNotEmpty)
-                        GestureDetector(
+                          GestureDetector(
                             onTap: () {
                               openLibraryDialog(libraryPortals);
                             },
@@ -502,7 +668,7 @@ class HomeState extends State<Home> {
                               ),
                             ),
                           ),
-                          if (paymentPortals.isNotEmpty)
+                        if (paymentPortals.isNotEmpty)
                           GestureDetector(
                             onTap: () {
                               openPaymentDialog(paymentPortals);
@@ -541,7 +707,7 @@ class HomeState extends State<Home> {
                               ),
                             ),
                           ),
-                          if (adminPortals.isNotEmpty)
+                        if (adminPortals.isNotEmpty)
                           GestureDetector(
                             onTap: () {
                               openAdminDialog(adminPortals);
@@ -1167,7 +1333,7 @@ class HomeState extends State<Home> {
     }
   }
 
-  void openLibraryDialog(List<Portal> libraryPortals){
+  void openLibraryDialog(List<Portal> libraryPortals) {
     int crossAxisCount = 2;
     double rowHeight = 145.0; // Adjust as needed based on your card content
 

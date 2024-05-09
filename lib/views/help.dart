@@ -86,7 +86,7 @@ class HelpState extends State<Help> {
                       children: [
                         if (document['title'] != null &&
                             document['title'].toString().isNotEmpty)
-                          Text(
+                          SelectableText(
                             document['title'],
                             style: const TextStyle(
                               fontSize: 25,
@@ -99,16 +99,21 @@ class HelpState extends State<Help> {
                           if (content['type'] == 'image')
                             Padding(
                               padding: const EdgeInsets.symmetric(vertical: 20),
-                              child: Image.network(
-                                content['value'] as String,
-                                width: double.infinity,
-                                height: 300,
+                              child: GestureDetector(
+                                onTap: () {
+                                  // Handle image selection
+                                },
+                                child: Image.network(
+                                  content['value'] as String,
+                                  width: double.infinity,
+                                  height: 300,
+                                ),
                               ),
                             )
                           else if (content['type'] == 'text')
                             Padding(
                               padding: const EdgeInsets.only(bottom: 30),
-                              child: Text(
+                              child: SelectableText(
                                 content['value'] as String,
                                 style: const TextStyle(fontSize: 15),
                                 textAlign: TextAlign.justify,

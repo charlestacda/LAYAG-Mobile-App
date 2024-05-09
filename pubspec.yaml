@@ -78,6 +78,7 @@ dependencies:
   flutter_inappwebview: ^6.0.0
   app_settings: ^5.1.1
   open_mail_app: ^0.4.5
+  uuid: ^3.0.7
 
 
 dev_dependencies:

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:lpu_app/config/app_config.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PrivacyPolicy extends StatefulWidget {
   const PrivacyPolicy({Key? key}) : super(key: key);
@@ -73,12 +74,17 @@ class PrivacyPolicyState extends State<PrivacyPolicy> {
                     const SizedBox(height: 16),
                     privacyPolicyContent.isNotEmpty
                         ? MarkdownBody(
+                          selectable: true,
                             data: privacyPolicyContent,
                             styleSheet: MarkdownStyleSheet(
                               
                             ),
+                          onTapLink: (text, href, title) {
+                              // Handle link taps
+                              launchLink(href!);
+                            },
                           )
-                        : CircularProgressIndicator(), // Show loading indicator if content is being fetched
+                        : CircularProgressIndicator(),
                   ],
                 ),
               ),
@@ -87,5 +93,12 @@ class PrivacyPolicyState extends State<PrivacyPolicy> {
         },
       ),
     );
+  }
+  Future<void> launchLink(String url) async {
+    if (await canLaunchUrl (Uri.parse(url))) {
+      await launchUrl (Uri.parse(url));
+    } else {
+      throw 'Could not launch $url';
+    }
   }
 }
