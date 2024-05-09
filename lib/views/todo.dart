@@ -448,11 +448,12 @@ class ToDoState extends State<ToDo> {
     CompleteTaskModel convertedCompletedTask,
   ) async {
     try {
+      String sanitizedTaskName = sanitizeTaskName(convertedCompletedTask.TodoTask);
       await FirebaseFirestore.instance
           .collection('completed_list')
           .doc(userID)
           .set({
-        convertedCompletedTask.TodoTask: {
+        sanitizedTaskName: {
           'TodoTask': convertedCompletedTask.TodoTask,
           'CreatedDate': convertedCompletedTask.CreatedDate,
           'DeadlineDate': convertedCompletedTask.DeadlineDate,
@@ -474,7 +475,7 @@ class ToDoState extends State<ToDo> {
           .collection('todo_list')
           .doc(userID)
           .update({
-        completedTask.todoTask: FieldValue.delete(),
+        sanitizedTaskName: FieldValue.delete(),
       });
     } catch (e) {
       print('Error updating Firestore: $e');
@@ -487,8 +488,9 @@ class ToDoState extends State<ToDo> {
     TaskModel convertedIncompleteTask,
   ) async {
     try {
+      String sanitizedTaskName = sanitizeTaskName(convertedIncompleteTask.todoTask);
       await FirebaseFirestore.instance.collection('todo_list').doc(userID).set({
-        convertedIncompleteTask.todoTask: {
+        sanitizedTaskName: {
           'todoTask': convertedIncompleteTask.todoTask,
           'createdDate': convertedIncompleteTask.createdDate,
           'deadlineDate': convertedIncompleteTask.deadlineDate,
@@ -510,7 +512,7 @@ class ToDoState extends State<ToDo> {
           .collection('completed_list')
           .doc(userID)
           .update({
-        incompleteTask.TodoTask: FieldValue.delete(),
+        sanitizedTaskName: FieldValue.delete(),
       });
     } catch (e) {
       print('Error updating Firestore: $e');
@@ -519,66 +521,69 @@ class ToDoState extends State<ToDo> {
   }
 
   void removeCompletedTask(int index) async {
-    try {
-      // Store the information that needs to be archived
-      final taskToArchive = completedList[index];
+  try {
+    // Store the information that needs to be archived
+    final taskToArchive = completedList[index];
+    String sanitizedTaskName = sanitizeTaskName(taskToArchive.TodoTask);
 
-      // Remove the card immediately from the UI
+    // Remove the card immediately from the UI
+    setState(() {
+      completedList.removeAt(index);
+    });
+
+    // Update the todoStatus in the `completed_list` collection in Firestore
+    await FirebaseFirestore.instance
+        .collection('completed_list')
+        .doc(userID)
+        .update({
+      '${sanitizedTaskName}.TodoStatus': 'Archived',
+    }).then((_) {
+      // Successfully updated in Firestore
+    }).catchError((error) {
+      // Handle error while updating in Firestore
       setState(() {
-        completedList.removeAt(index);
+        // Revert the change in completedList if updating in Firestore fails
+        completedList.insert(index, taskToArchive);
       });
-
-      // Update the todoStatus in the `todo_list` collection in Firestore
-      await FirebaseFirestore.instance
-          .collection('completed_list')
-          .doc(userID)
-          .update({
-        '${taskToArchive.TodoTask}.TodoStatus': 'Archived',
-      }).then((_) {
-        // Successfully updated in Firestore
-      }).catchError((error) {
-        // Handle error while updating in Firestore
-        setState(() {
-          // Revert the change in todoList if updating in Firestore fails
-          completedList[index].TodoStatus = taskToArchive.TodoStatus;
-        });
-        Fluttertoast.showToast(msg: 'Failed to archive task');
-      });
-    } catch (e) {
-      print('Error removing task: $e');
-    }
+      Fluttertoast.showToast(msg: 'Failed to archive task');
+    });
+  } catch (e) {
+    print('Error removing task: $e');
   }
+}
 
-  void removeTodoTask(int index) async {
-    try {
-      // Store the information that needs to be archived
-      final taskToArchive = todoList[index];
+void removeTodoTask(int index) async {
+  try {
+    // Store the information that needs to be archived
+    final taskToArchive = todoList[index];
+    String sanitizedTaskName = sanitizeTaskName(taskToArchive.todoTask);
 
-      // Update the todoStatus field to "Archived"
+    // Remove the card immediately from the UI
+    setState(() {
+      todoList.removeAt(index);
+    });
+
+    // Update the todoStatus in the `todo_list` collection in Firestore
+    await FirebaseFirestore.instance
+        .collection('todo_list')
+        .doc(userID)
+        .update({
+      '${sanitizedTaskName}.todoStatus': 'Archived',
+    }).then((_) {
+      // Successfully updated in Firestore
+    }).catchError((error) {
+      // Handle error while updating in Firestore
       setState(() {
-        todoList.removeAt(index);
+        // Revert the change in todoList if updating in Firestore fails
+        todoList.insert(index, taskToArchive);
       });
-
-      // Update the todoStatus in the `todo_list` collection in Firestore
-      await FirebaseFirestore.instance
-          .collection('todo_list')
-          .doc(userID)
-          .update({
-        '${taskToArchive.todoTask}.todoStatus': 'Archived',
-      }).then((_) {
-        // Successfully updated in Firestore
-      }).catchError((error) {
-        // Handle error while updating in Firestore
-        setState(() {
-          // Revert the change in todoList if updating in Firestore fails
-          todoList[index].todoStatus = taskToArchive.todoStatus;
-        });
-        Fluttertoast.showToast(msg: 'Failed to archive task');
-      });
-    } catch (e) {
-      print('Error archiving task: $e');
-    }
+      Fluttertoast.showToast(msg: 'Failed to archive task');
+    });
+  } catch (e) {
+    print('Error archiving task: $e');
   }
+}
+
 
   void reloadData() {
     setState(() {
@@ -1325,10 +1330,11 @@ class ToDoState extends State<ToDo> {
 
   Future<void> removeAllCompletedTask(CompleteTaskModel completedTask) async {
     final user = FirebaseAuth.instance.currentUser;
+    String sanitizedTaskName = sanitizeTaskName(completedTask.TodoTask);
     try {
       if (user != null) {
         final Map<String, dynamic> updateData = {
-          '${completedTask.TodoTask}.TodoStatus': 'Archived',
+          '$sanitizedTaskName.TodoStatus': 'Archived',
         };
 
         await _completedReference.doc(user.uid).update(updateData);
@@ -1354,8 +1360,10 @@ class ToDoState extends State<ToDo> {
         return;
       }
 
+      String sanitizedTaskName = sanitizeTaskName(todoTask.text);
+
       await _todoreference.doc(ID).set({
-        todoTask.text: {
+        sanitizedTaskName: {
           'todoTask': todoTask.text,
           'createdDate':
               '${newForm.toString()} ${CreateTimeNow.format(context).toString()}',
@@ -1407,6 +1415,40 @@ class ToDoState extends State<ToDo> {
       Fluttertoast.showToast(msg: 'Error parsing date/time');
     }
   }
+
+  String sanitizeTaskName(String taskName) {
+  // Define a map of characters not allowed in Firestore field paths
+  Map<String, String> invalidCharacterMap = {
+    '~': 't',
+    '*': 'a',
+    '/': 's',
+    '[': 'k',
+    ']': 'e',
+    '.': 'd',
+    '#': 'h',
+    '\$': 'c',
+  };
+
+  // Replace invalid characters with mapped valid characters
+  for (String invalidChar in invalidCharacterMap.keys) {
+    taskName = taskName.replaceAll(invalidChar, invalidCharacterMap[invalidChar]!);
+  }
+
+  // Remove leading and trailing underscores
+  taskName = taskName.replaceAll(RegExp('^_+|_+\$'), '');
+
+  // If the resulting task name is empty, use a default value
+  if (taskName.isEmpty) {
+    taskName = 'UnnamedTask';
+  }
+
+  return taskName;
+}
+
+
+
+
+
 
   _showEditDialog(BuildContext context, TaskModel task) {
     TextEditingController taskController =

@@ -943,21 +943,25 @@ DateTime _getTaskDeadlineDateTime(dynamic task) {
 
   Future<void> _deleteTask(dynamic task) async {
     final user = FirebaseAuth.instance.currentUser;
+    String sanitizedTodoTaskName;
+    String sanitizedCompletedTaskName;
     if (user != null) {
       try {
         if (task is TaskModel) {
+          sanitizedTodoTaskName = sanitizeTaskName(task.todoTask);
           await FirebaseFirestore.instance
               .collection('todo_list')
               .doc(user.uid)
               .update({
-            '${task.todoTask}': FieldValue.delete(),
+            sanitizedTodoTaskName: FieldValue.delete(),
           });
         } else if (task is CompleteTaskModel) {
+          sanitizedCompletedTaskName = sanitizeTaskName(task.TodoTask);
           await FirebaseFirestore.instance
               .collection('completed_list')
               .doc(user.uid)
               .update({
-            '${task.TodoTask}': FieldValue.delete(),
+            sanitizedCompletedTaskName: FieldValue.delete(),
           });
         }
 
@@ -972,23 +976,56 @@ DateTime _getTaskDeadlineDateTime(dynamic task) {
     }
   }
 
+  String sanitizeTaskName(String taskName) {
+  // Define a map of characters not allowed in Firestore field paths
+  Map<String, String> invalidCharacterMap = {
+    '~': 't',
+    '*': 'a',
+    '/': 's',
+    '[': 'k',
+    ']': 'e',
+    '.': 'd',
+    '#': 'h',
+    '\$': 'c',
+  };
+
+  // Replace invalid characters with mapped valid characters
+  for (String invalidChar in invalidCharacterMap.keys) {
+    taskName = taskName.replaceAll(invalidChar, invalidCharacterMap[invalidChar]!);
+  }
+
+  // Remove leading and trailing underscores
+  taskName = taskName.replaceAll(RegExp('^_+|_+\$'), '');
+
+  // If the resulting task name is empty, use a default value
+  if (taskName.isEmpty) {
+    taskName = 'UnnamedTask';
+  }
+
+  return taskName;
+}
+
   Future<void> _restoreTask(dynamic task) async {
     final user = FirebaseAuth.instance.currentUser;
+    String sanitizedTodoTaskName;
+    String sanitizedCompletedTaskName;
     if (user != null) {
       try {
         if (task is TaskModel) {
+          sanitizedTodoTaskName = sanitizeTaskName(task.todoTask);
           await FirebaseFirestore.instance
               .collection('todo_list')
               .doc(user.uid)
               .update({
-            '${task.todoTask}.todoStatus': 'Pending',
+            '$sanitizedTodoTaskName.todoStatus': 'Pending',
           });
         } else if (task is CompleteTaskModel) {
+          sanitizedCompletedTaskName = sanitizeTaskName(task.TodoTask);
           await FirebaseFirestore.instance
               .collection('completed_list')
               .doc(user.uid)
               .update({
-            '${task.TodoTask}.TodoStatus': 'Completed',
+            '$sanitizedCompletedTaskName.TodoStatus': 'Completed',
           });
         }
 
