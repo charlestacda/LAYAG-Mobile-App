@@ -15,48 +15,46 @@ import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
-
-
-
 class UserTypeProvider with ChangeNotifier {
-  String userType = ''; // Initialize with an empty string
+  String userType = '';
 
   void setUserType(String type) {
     userType = type;
-    notifyListeners(); // Notify listeners about the change
+    notifyListeners();
   }
 }
 
 FirebaseAnalytics analytics = FirebaseAnalytics.instance;
-FirebaseAnalyticsObserver observer = FirebaseAnalyticsObserver(analytics: analytics);
-
+FirebaseAnalyticsObserver observer =
+    FirebaseAnalyticsObserver(analytics: analytics);
 
 Future<void> main() async {
   tzdata.initializeTimeZones();
-  tz.setLocalLocation(tz.getLocation('Asia/Manila')); 
-  
-  FlutterNativeSplash.preserve(widgetsBinding: WidgetsFlutterBinding.ensureInitialized());
+  tz.setLocalLocation(tz.getLocation('Asia/Manila'));
 
-  await Future.delayed(const Duration(seconds: AppConfig.appSplashScreenDuration));
+  FlutterNativeSplash.preserve(
+      widgetsBinding: WidgetsFlutterBinding.ensureInitialized());
+
+  await Future.delayed(
+      const Duration(seconds: AppConfig.appSplashScreenDuration));
 
   await Firebase.initializeApp(
-  options: DefaultFirebaseOptions.currentPlatform,
-);
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
-WidgetsFlutterBinding.ensureInitialized();
+  WidgetsFlutterBinding.ensureInitialized();
 
-try {
+  try {
     final directory = await getApplicationDocumentsDirectory();
     print('Application Documents Directory: ${directory.path}');
   } catch (e) {
     print('Error getting directory: $e');
   }
 
-
   FlutterNativeSplash.remove();
-  
+
   AwesomeNotifications().initialize(
-    'resource://drawable/layag_icon', // Replace with your app icon
+    'resource://drawable/layag_icon',
     [
       NotificationChannel(
         channelKey: 'basic_channel',
@@ -71,19 +69,15 @@ try {
     ],
   );
 
-// Check if the app was terminated for more than 3 hours
   SharedPreferences prefs = await SharedPreferences.getInstance();
   int? lastTerminationTimestamp = prefs.getInt('last_termination_timestamp');
   int currentTimestamp = DateTime.now().millisecondsSinceEpoch;
-  int threeHoursInMillis = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
+  int threeHoursInMillis = 3 * 60 * 60 * 1000;
 
   if (lastTerminationTimestamp != null &&
       currentTimestamp - lastTerminationTimestamp > threeHoursInMillis) {
-    // If more than 3 hours, log out the user
     await FirebaseAuth.instance.signOut();
   }
-
-
 
   runApp(
     ChangeNotifierProvider<UserTypeProvider>(
@@ -91,37 +85,36 @@ try {
       child: MaterialApp(
         title: AppConfig.appName,
         navigatorObservers: [
-      observer, // Include Firebase Analytics observer in navigatorObservers
-    ],
+          observer,
+        ],
         debugShowCheckedModeBanner: AppConfig.appDebugMode,
-        // Listen to authentication state changes and navigate accordingly
         home: StreamBuilder<User?>(
           stream: FirebaseAuth.instance.authStateChanges(),
           builder: (BuildContext context, AsyncSnapshot<User?> snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return CircularProgressIndicator(); // Display a loader if the connection is still in progress
+              return CircularProgressIndicator();
             } else if (snapshot.hasData && snapshot.data != null) {
-              return const Landing(); // Navigate to the Landing screen if a user is logged in
+              return const Landing();
             } else {
-              return const Login(); // Navigate to the Login screen if no user is logged in
+              return const Login();
             }
           },
         ),
         theme: ThemeData(
-        useMaterial3: false,
-        fontFamily: 'Arial',
-        colorScheme: ColorScheme.fromSwatch().copyWith(
-          primary: AppConfig.appSecondaryTheme,
+          useMaterial3: false,
+          fontFamily: 'Arial',
+          colorScheme: ColorScheme.fromSwatch().copyWith(
+            primary: AppConfig.appSecondaryTheme,
+          ),
         ),
       ),
     ),
-    ),
   );
-  
-// Save the current timestamp when the app is terminated
+
   runAppObserver((AppLifecycleState state) async {
     if (state == AppLifecycleState.paused) {
-      prefs.setInt('last_termination_timestamp', DateTime.now().millisecondsSinceEpoch);
+      prefs.setInt(
+          'last_termination_timestamp', DateTime.now().millisecondsSinceEpoch);
     }
   });
 }
@@ -140,12 +133,3 @@ class AppLifecycleObserver extends WidgetsBindingObserver {
     callback(state);
   }
 }
-
-
-
-  
-  
-
-
-
-

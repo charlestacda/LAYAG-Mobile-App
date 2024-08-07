@@ -105,18 +105,14 @@ class HomeState extends State<Home> {
       final currentUser = _auth.currentUser;
       final userId = currentUser?.uid;
 
-      // Reference to the user's handbook collection
       final userHandbookCollectionRef =
           _firestore.collection('users').doc(userId).collection('handbooks');
 
-      // Get a list of handbook IDs the user already has
       final userHandbookIds = await userHandbookCollectionRef.get().then(
           (querySnapshot) => querySnapshot.docs.map((doc) => doc.id).toList());
 
-      // Reference to the 'handbooks' collection
       final handbooksRef = _firestore.collection('handbooks');
 
-      // Update existing handbooks
       await Future.forEach(userHandbookIds, (handbookId) async {
         final userHandbookDocRef = userHandbookCollectionRef.doc(handbookId);
         final handbookDocSnapshot = await handbooksRef.doc(handbookId).get();
@@ -124,13 +120,11 @@ class HomeState extends State<Home> {
           final handbookTitle = handbookDocSnapshot.data()?['title'];
           final handbookContent = handbookDocSnapshot.data()?['content'];
 
-          // Update the title and content fields in the user's handbook document
           await userHandbookDocRef.update({
             'title': handbookTitle,
             'content': handbookContent,
           });
 
-          // Call function to update notification when content is updated
           await updateHandbookContent(handbookId, handbookContent, userId!);
 
           print(
@@ -138,24 +132,20 @@ class HomeState extends State<Home> {
         }
       });
 
-      // Fetch all handbooks that are not yet stored for the user
       final handbooksSnapshot = await handbooksRef.get();
 
       if (handbooksSnapshot.docs.isNotEmpty) {
-        // Loop through each handbook and store it in the user's collection if not already present
         for (final handbookDoc in handbooksSnapshot.docs) {
           final handbookId = handbookDoc.id;
           if (!userHandbookIds.contains(handbookId)) {
             final title = handbookDoc.data()['title'];
             final content = handbookDoc.data()['content'];
 
-            // Store the handbook in the user's collection with the ID as the document name
             await userHandbookCollectionRef.doc(handbookId).set({
               'title': title,
               'content': content,
             });
 
-            // Do something with the new handbook, like showing a notification or updating UI
             print(
                 'New handbook stored for user: ${currentUser?.email} - ID: $handbookId');
           }
@@ -172,12 +162,10 @@ class HomeState extends State<Home> {
       String handbookId, String newContent, String userId) async {
     final handbookRef = _firestore.collection('handbooks').doc(handbookId);
 
-    // Update the content of the handbook
     await handbookRef.update({
       'content': newContent,
     });
 
-    // Call the notification function only when content is updated
     final handbookDoc = await handbookRef.get();
     if (handbookDoc.exists) {
       final handbookTitle = handbookDoc.data()?['title'];
@@ -193,10 +181,8 @@ class HomeState extends State<Home> {
       String handbookContent,
       String userId,
       FirebaseFirestore firestore) async {
-    // Reference to the 'handbooks' collection
     final handbooksRef = firestore.collection('handbooks');
 
-    // Get the previous content of the handbook
     final prevContentQuery = await handbooksRef
         .doc(handbookId)
         .collection('previous_content')
@@ -209,19 +195,15 @@ class HomeState extends State<Home> {
       prevContent = prevContentQuery.docs.first.data()['content'];
     }
 
-    // Check if content has been updated
     if (prevContent != handbookContent) {
       final notificationName = '$handbookTitle updated';
       final notificationTitle = 'The $handbookTitle has been updated!';
 
-      final uniqueNotificationId =
-          Uuid().v4(); // Generate a unique ID for the notification
+      final uniqueNotificationId = Uuid().v4();
 
-      // Add the notification directly under the 'Notifications' map within the user's document
       final notificationRef = firestore.collection('users').doc(userId);
       await notificationRef.update({
         'Notifications.$uniqueNotificationId': {
-          // Use the unique ID as the key
           'notifName': notificationName,
           'notifTitle': notificationTitle,
         },
@@ -231,7 +213,6 @@ class HomeState extends State<Home> {
       sendUpdateNotification(uniqueNotificationId, '$handbookTitle updated!',
           'The $handbookTitle has been updated!');
 
-      // Update the previous content in the database
       await handbooksRef.doc(handbookId).collection('previous_content').add({
         'content': handbookContent,
         'timestamp': FieldValue.serverTimestamp(),
@@ -246,15 +227,13 @@ class HomeState extends State<Home> {
     if (status.isGranted) {
       await AwesomeNotifications().createNotification(
         content: NotificationContent(
-          id: uniqueId.hashCode, // Use the unique ID as the notification ID
-          channelKey: 'basic_channel', // Channel key defined in initialization
+          id: uniqueId.hashCode,
+          channelKey: 'basic_channel',
           title: title,
           body: message,
         ),
       );
     } else {
-      // Handle the case when notification permission is not granted
-      // You may choose to show a message or log a warning
       print("Notification permission is not granted. Notification not sent.");
     }
   }
@@ -267,24 +246,15 @@ class HomeState extends State<Home> {
       PermissionStatus status = await Permission.notification.status;
 
       if (status.isGranted) {
-        // Permission is already granted, save the flag
         prefs.setBool('askedForPermission', true);
       } else if (status.isPermanentlyDenied) {
-        // Permission is permanently denied, save the flag and handle accordingly
         prefs.setBool('askedForPermission', true);
-
-        // Optionally: Show a message to the user that they need to enable the permission in settings
-        // You might want to navigate the user to the app settings using AppSettings.openAppSettings()
       } else {
         PermissionStatus permissionStatus =
             await Permission.notification.request();
         if (permissionStatus.isGranted) {
-          // Permission granted, save the flag
           prefs.setBool('askedForPermission', true);
-        } else {
-          // Handle if permission is not granted
-          // For example, show an error message or handle it as required in your app
-        }
+        } else {}
       }
     }
   }
@@ -309,11 +279,8 @@ class HomeState extends State<Home> {
 
           fetchTips(fetchedUserType);
           fetchPortals(fetchedUserType);
-        } else {
-          // Handle case where user document doesn't exist
-        }
+        } else {}
       } catch (e) {
-        // Handle exceptions, such as FirestoreError, if any
         print('Error fetching user data: $e');
       }
     }
@@ -360,7 +327,6 @@ class HomeState extends State<Home> {
               int randomIndex = random.nextInt(fetchedTips.length);
               randomTip = fetchedTips[randomIndex];
 
-              // Call checkAndShowDialog here, as data has been fetched successfully
               checkAndShowDialog();
             }
           });
@@ -391,7 +357,7 @@ class HomeState extends State<Home> {
           } else if (userType == 'Faculty') {
             visibleToUser = !archived && doc['visibleToEmployees'];
           } else if (userType == 'Admin') {
-            visibleToUser = true; // Admin has access to all portals
+            visibleToUser = true;
           }
 
           if (visibleToUser) {
@@ -426,12 +392,10 @@ class HomeState extends State<Home> {
   }
 
   void checkAndShowDialog() async {
-    // Get the shared preferences instance
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    // Check if the dialog has been shown before
+
     bool dialogShown = prefs.getBool('dialogShown') ?? false;
     if (!dialogShown) {
-      // If the dialog has not been shown, show it
       await showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -475,11 +439,9 @@ class HomeState extends State<Home> {
     await prefs.setInt('selectedOption', value);
   }
 
-  // Method to load the selected option
   Future<int> loadSelectedOption() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getInt('selectedOption') ??
-        1; // Default value is 1 for Option 2
+    return prefs.getInt('selectedOption') ?? 1;
   }
 
   @override
@@ -499,7 +461,6 @@ class HomeState extends State<Home> {
         automaticallyImplyLeading: false,
         leading: Builder(
           builder: (context) {
-            // Fetch the current user details
             final user = FirebaseAuth.instance.currentUser;
             return IconButton(
               icon: ClipOval(
@@ -586,7 +547,6 @@ class HomeState extends State<Home> {
                           ),
                         ],
                         onSelected: (value) async {
-                          // Handle menu item selection
                           setState(() {
                             switch (value) {
                               case 0:
@@ -618,7 +578,6 @@ class HomeState extends State<Home> {
                         initialValue: selected,
                       ),
                     ),
-                    // Other Portals
                     GridView.count(
                       physics: const NeverScrollableScrollPhysics(),
                       crossAxisCount: crossAxisCount,
@@ -748,7 +707,6 @@ class HomeState extends State<Home> {
                           ),
                       ],
                     ),
-                    // Button after the GridView
                   ],
                 ),
               ),
@@ -818,8 +776,7 @@ class HomeState extends State<Home> {
                   isLoading
                       ? CircularProgressIndicator()
                       : Row(
-                          mainAxisAlignment: MainAxisAlignment
-                              .end, // Align buttons to the right
+                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             TextButton(
                               onPressed: () async {
@@ -847,16 +804,13 @@ class HomeState extends State<Home> {
 
                                   if (await reauthenticateUser(
                                       enteredPassword)) {
-                                    Navigator.pop(
-                                        context); // Close reauthentication dialog
+                                    Navigator.pop(context);
                                     showPasswordManagerDialog(userType);
                                   } else {
                                     setState(() {
                                       isLoading = false;
                                     });
 
-                                    // Display an error message or handle incorrect password
-                                    // For simplicity, you can show a SnackBar
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text('Incorrect password!'),
@@ -864,7 +818,6 @@ class HomeState extends State<Home> {
                                     );
                                   }
                                 } else {
-                                  // Handle case where entered password is blank
                                   print('Entered password is blank');
                                 }
                               },
@@ -887,49 +840,43 @@ class HomeState extends State<Home> {
       if (user != null) {
         print('Entered Password: $enteredPassword');
 
-        // Use Firebase Authentication to reauthenticate the user
         AuthCredential credential = EmailAuthProvider.credential(
             email: user.email!, password: enteredPassword);
 
         await user.reauthenticateWithCredential(credential);
 
         print('Reauthentication Successful');
-        return true; // Reauthentication successful
+        return true;
       }
     } catch (e) {
       print('Reauthentication error: $e');
     }
 
     print('Reauthentication Failed');
-    return false; // Reauthentication failed
+    return false;
   }
 
   void showPasswordManagerDialog(String userType) async {
     User? user = FirebaseAuth.instance.currentUser;
 
     if (user != null) {
-      // Fetch user document
       DocumentReference userDocRef =
           FirebaseFirestore.instance.collection('users').doc(user.uid);
 
       DocumentSnapshot userDoc = await userDocRef.get();
 
-      // Check if the user document exists and has the 'passwordManager' field
       if (userDoc.exists &&
           (userDoc.data() as Map<String, dynamic>)
               .containsKey('passwordManager')) {
-        // Get the existing passwordManager map field
         Map<String, dynamic> passwordManager =
             (userDoc.data() as Map<String, dynamic>)['passwordManager'];
 
-        // Fetch all portal titles
         List portalTitles = passwordManager['portals'] != null
             ? (passwordManager['portals'] as List)
                 .map((item) => item.keys.first)
                 .toList()
             : [];
 
-        // Filter portals based on user type
         List<Portal> filteredPortals = portals.where((portal) {
           bool visibleToUser = false;
           if (userType == 'Student') {
@@ -937,28 +884,24 @@ class HomeState extends State<Home> {
           } else if (userType == 'Faculty') {
             visibleToUser = portal.visibleToEmployees;
           } else if (userType == 'Admin') {
-            visibleToUser = true; // Admin has access to all portals
+            visibleToUser = true;
           }
           return visibleToUser;
         }).toList();
 
-        // Update passwordManager with filtered portal titles
         for (Portal portal in filteredPortals) {
-          // Check if the portal already exists in the passwordManager
           if (!portalTitles.contains(portal.title)) {
-            // If it doesn't exist, add the portal with default values
             passwordManager['portals'].add({
               portal.title: {
                 'email/user': user.email,
                 'password': '',
               },
             });
-            // Add the portal title to the list
+
             portalTitles.add(portal.title);
           }
         }
 
-        // Update the user document with the new passwordManager
         await userDocRef
             .set({'passwordManager': passwordManager}, SetOptions(merge: true));
 
@@ -982,9 +925,8 @@ class HomeState extends State<Home> {
                   SizedBox(height: 8),
                   if (portalTitles.isNotEmpty)
                     SizedBox(
-                      width: double
-                          .maxFinite, // Make the SizedBox take up maximum width
-                      height: 285, // Set a specific height for the ListView
+                      width: double.maxFinite,
+                      height: 285,
                       child: ListView.builder(
                         shrinkWrap: true,
                         itemCount: portalTitles.length,
@@ -1047,14 +989,11 @@ class HomeState extends State<Home> {
           },
         );
       } else {
-        // If 'passwordManager' field doesn't exist, create a new one
         Map<String, dynamic> passwordManager = {'portals': []};
 
-        // Fetch all portal titles
         List<String> portalTitles =
             portals.map((portal) => portal.title).toList();
 
-        // Filter portals based on user type
         List<Portal> filteredPortals = portals.where((portal) {
           bool visibleToUser = false;
           if (userType == 'Student') {
@@ -1062,12 +1001,11 @@ class HomeState extends State<Home> {
           } else if (userType == 'Faculty') {
             visibleToUser = portal.visibleToEmployees;
           } else if (userType == 'Admin') {
-            visibleToUser = true; // Admin has access to all portals
+            visibleToUser = true;
           }
           return visibleToUser;
         }).toList();
 
-        // Update passwordManager with filtered portal titles
         passwordManager['portals'] = filteredPortals
             .map((portal) => {
                   portal.title: {
@@ -1077,7 +1015,6 @@ class HomeState extends State<Home> {
                 })
             .toList();
 
-        // Update the user document with the new passwordManager
         await userDocRef
             .set({'passwordManager': passwordManager}, SetOptions(merge: true));
 
@@ -1101,9 +1038,8 @@ class HomeState extends State<Home> {
                   SizedBox(height: 8),
                   if (portalTitles.isNotEmpty)
                     SizedBox(
-                      width: double
-                          .maxFinite, // Make the SizedBox take up maximum width
-                      height: 285, // Set a specific height for the ListView
+                      width: double.maxFinite,
+                      height: 285,
                       child: ListView.builder(
                         shrinkWrap: true,
                         itemCount: portalTitles.length,
@@ -1192,7 +1128,7 @@ class HomeState extends State<Home> {
           stream: portalStream,
           builder: (context, snapshot) {
             if (!snapshot.hasData || snapshot.data == null) {
-              return CircularProgressIndicator(); // Loading indicator while fetching data
+              return CircularProgressIndicator();
             }
 
             Map<String, dynamic>? portalDetailsMap;
@@ -1208,7 +1144,6 @@ class HomeState extends State<Home> {
               }
             }
 
-            // Populate the controllers with existing data if available
             emailController.text =
                 (portalDetailsMap ?? const {})['email/user'] ?? '';
             passwordController.text =
@@ -1265,7 +1200,6 @@ class HomeState extends State<Home> {
                           ),
                           ElevatedButton(
                             onPressed: () async {
-                              // Save button logic
                               await savePortalDetails(portalTitle, {
                                 'email/user': emailController.text,
                                 'password': passwordController.text,
@@ -1293,7 +1227,6 @@ class HomeState extends State<Home> {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        // Fetch user document
         DocumentReference userDocRef =
             FirebaseFirestore.instance.collection('users').doc(user.uid);
         DocumentSnapshot userDoc = await userDocRef.get();
@@ -1308,20 +1241,16 @@ class HomeState extends State<Home> {
               passwordManager.containsKey('portals')) {
             List<dynamic> portalsList = passwordManager['portals'];
 
-            // Find the index of the portal with the given title
             int portalIndex = portalsList.indexWhere((portal) {
               return portal.containsKey(portalTitle);
             });
 
             if (portalIndex != -1) {
-              // If the portal with the given title exists, update its details
               portalsList[portalIndex] = {portalTitle: details};
             } else {
-              // If the portal with the given title doesn't exist, add a new one
               portalsList.add({portalTitle: details});
             }
 
-            // Update the user document with the modified passwordManager
             await userDocRef.set({
               'passwordManager': {'portals': portalsList}
             }, SetOptions(merge: true));
@@ -1335,7 +1264,7 @@ class HomeState extends State<Home> {
 
   void openLibraryDialog(List<Portal> libraryPortals) {
     int crossAxisCount = 2;
-    double rowHeight = 145.0; // Adjust as needed based on your card content
+    double rowHeight = 145.0;
 
     int rowCount = (libraryPortals.length / crossAxisCount).ceil();
     double gridViewHeight = rowCount * rowHeight;
@@ -1385,7 +1314,7 @@ class HomeState extends State<Home> {
 
   void openPaymentDialog(List<Portal> paymentPortals) {
     int crossAxisCount = 2;
-    double rowHeight = 145.0; // Adjust as needed based on your card content
+    double rowHeight = 145.0;
 
     int rowCount = (paymentPortals.length / crossAxisCount).ceil();
     double gridViewHeight = rowCount * rowHeight;
@@ -1450,7 +1379,7 @@ class HomeState extends State<Home> {
 
   void openAdminDialog(List<Portal> adminPortals) {
     int crossAxisCount = 2;
-    double rowHeight = 145.0; // Adjust as needed based on your card content
+    double rowHeight = 145.0;
 
     int rowCount = (adminPortals.length / crossAxisCount).ceil();
     double gridViewHeight = rowCount * rowHeight;
@@ -1546,7 +1475,7 @@ class HomeState extends State<Home> {
                             return const Text('Image unavailable');
                           },
                         )
-                      : const SizedBox(), // Check if img is empty
+                      : const SizedBox(),
                 ),
                 const SizedBox(height: 16),
                 Text(

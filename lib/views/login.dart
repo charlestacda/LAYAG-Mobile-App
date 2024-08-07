@@ -74,7 +74,7 @@ class LoginState extends State<Login> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: <Widget>[
-                      const SizedBox(height: 48),
+                      const SizedBox(height: 70),
                       Center(
                         child: Column(
                           children: [
@@ -104,7 +104,7 @@ class LoginState extends State<Login> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 50),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
